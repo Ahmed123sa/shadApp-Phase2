@@ -26,6 +26,7 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
     Route::get('/workspaces/{workspace}/chat', [ChatController::class, 'index']);
     Route::post('/workspaces/{workspace}/chat', [ChatController::class, 'store']);
     Route::patch('/chat/{chatMessage}/require-action', [ChatController::class, 'toggleRequireAction']);
+    Route::post('/chat/{chatMessage}/respond', [ChatController::class, 'respond']);
 });
 
 // Authenticated routes (Dashboard - SuperAdmin / AccountManager)
@@ -80,6 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Approvals
     Route::get('/workspaces/{workspace}/approvals', [ApprovalController::class, 'index']);
     Route::post('/workspaces/{workspace}/approvals', [ApprovalController::class, 'store']);
+    Route::get('/approvals/{approval}', [ApprovalController::class, 'show']);
     Route::post('/approvals/{approval}/respond', [ApprovalController::class, 'respond']);
 
     // Meetings

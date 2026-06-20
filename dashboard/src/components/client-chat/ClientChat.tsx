@@ -11,6 +11,9 @@ export default function ClientChat({ wsId }: { wsId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [sendError, setSendError] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [responding, setResponding] = useState<Record<number, boolean>>({});
+  const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = () => {
@@ -25,18 +28,31 @@ export default function ClientChat({ wsId }: { wsId: number }) {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && !uploadFile) return;
     setSendError('');
     try {
-      const { data } = await api.post(`/workspaces/${wsId}/chat`, { message: text });
-      if (data?.message) { setMessages((prev) => [...prev, data.message]); setText(''); }
+      const form = new FormData();
+      if (text.trim()) form.append('message', text);
+      if (uploadFile) form.append('file', uploadFile);
+      const { data } = await api.post(`/workspaces/${wsId}/chat`, form);
+      if (data?.message) { setMessages((prev) => [...prev, data.message]); setText(''); setUploadFile(null); if (fileRef.current) fileRef.current.value = ''; }
     } catch (err: any) {
-      if (err?.response?.status === 401) {
-        setSendError('انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى');
-      } else {
-        setSendError('فشل إرسال الرسالة');
-      }
+      if (err?.response?.status === 401) setSendError('انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى');
+      else setSendError('فشل إرسال الرسالة');
     }
+  };
+
+  const respond = async (id: number, action: string) => {
+    setResponding((prev) => ({ ...prev, [id]: true }));
+    const { data } = await api.post(`/chat/${id}/respond`, { action }).catch(() => ({ data: null }));
+    if (data) setMessages((prev) => prev.map((m) => m.id === id ? data.message : m));
+    setResponding((prev) => ({ ...prev, [id]: false }));
+  };
+
+  const actionResultLabel: Record<string, string> = {
+    approved: '✅ تمت الموافقة',
+    rejected: '❌ تم الرفض',
+    edit_requested: '✎ تم طلب تعديل',
   };
 
   if (loading) return <LoadingSkeleton message="جاري تحميل المحادثة..." />;
@@ -48,6 +64,9 @@ export default function ClientChat({ wsId }: { wsId: number }) {
         {messages.length === 0 ? <EmptyState message="لا توجد رسائل بعد" /> : null}
         {messages.map((m) => {
           const sentByClient = m.sender_type === 'App\\Models\\Client';
+          const isPending = m.requires_action && !m.action_taken;
+          const isResponded = m.action_taken;
+          const approval = m.approval;
           return (
             <div key={m.id} className={`flex ${sentByClient ? 'justify-end' : 'justify-start'}`}>
               <div className="max-w-xs">
@@ -55,13 +74,31 @@ export default function ClientChat({ wsId }: { wsId: number }) {
                   <p className={`text-xs mb-0.5 ${sentByClient ? 'text-blue-200' : 'text-zinc-500'}`}>
                     {sentByClient ? 'أنت' : (m.sender?.name || 'المدير')}
                   </p>
+                  {m.type === 'file' && m.file_url && (
+                    <div className="mb-1">
+                      {m.file_url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                        <img src={m.file_url} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
+                      ) : (
+                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">📎 عرض المرفق</a>
+                      )}
+                    </div>
+                  )}
                   {m.message}
+                  {isPending && <p className="text-xs text-red-500 mt-1 font-medium">🏷️ يتطلب موافقتك</p>}
+                  {isResponded && <p className={`text-xs mt-1 font-medium ${m.action_result === 'approved' ? 'text-emerald-600' : m.action_result === 'rejected' ? 'text-red-600' : 'text-amber-600'}`}>{actionResultLabel[m.action_result || '']}</p>}
+                  {approval?.certificate?.pdf_url && (
+                    <a href={`/storage/${approval.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline block mt-1">📄 تحميل شهادة الموافقة</a>
+                  )}
                 </div>
-                {m.requires_action && (
-                  <p className="text-xs text-red-500 mt-1 font-medium">يتطلب منك إجراء</p>
-                )}
-                {m.contract_id && (
-                  <p className="text-xs text-blue-600 mt-1">📄 عقد مرفق</p>
+                {isPending && (
+                  <div className="flex gap-1 mt-1">
+                    <button onClick={() => respond(m.id, 'approved')} disabled={responding[m.id]}
+                      className="text-xs bg-emerald-600 text-white px-2 py-1 rounded hover:bg-emerald-700 disabled:opacity-50">✔ موافقة</button>
+                    <button onClick={() => respond(m.id, 'edit_requested')} disabled={responding[m.id]}
+                      className="text-xs bg-amber-600 text-white px-2 py-1 rounded hover:bg-amber-700 disabled:opacity-50">✎ تعديل</button>
+                    <button onClick={() => respond(m.id, 'rejected')} disabled={responding[m.id]}
+                      className="text-xs bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 disabled:opacity-50">✘ رفض</button>
+                  </div>
                 )}
               </div>
             </div>
@@ -72,6 +109,9 @@ export default function ClientChat({ wsId }: { wsId: number }) {
 
       {sendError && <p className="text-xs text-red-500">{sendError}</p>}
       <div className="flex gap-2">
+        <input type="file" ref={fileRef} className="hidden" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+        <button onClick={() => fileRef.current?.click()} className="text-zinc-500 hover:text-blue-600 text-lg px-1" title="إرفاق ملف">📎</button>
+        {uploadFile && <span className="text-xs text-blue-600 self-center truncate max-w-24">{uploadFile.name}</span>}
         <input value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
           className="flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="اكتب رسالة..." />

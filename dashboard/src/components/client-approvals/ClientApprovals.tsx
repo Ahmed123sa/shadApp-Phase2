@@ -10,8 +10,7 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
   const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [respondData, setRespondData] = useState<{ id: number; action: string } | null>(null);
-  const [signature, setSignature] = useState('');
+  const [respondTarget, setRespondTarget] = useState<{ id: number; action: string } | null>(null);
 
   useEffect(() => {
     api.get(`/workspaces/${wsId}/approvals`)
@@ -21,19 +20,29 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
   }, [wsId]);
 
   const respond = async () => {
-    if (!respondData) return;
-    const body: any = { action: respondData.action };
-    if (respondData.action === 'approved' && signature.trim()) body.signature = signature.trim();
-    const { data } = await api.post(`/approvals/${respondData.id}/respond`, body).catch(() => ({ data: null }));
+    if (!respondTarget) return;
+    const { data } = await api.post(`/approvals/${respondTarget.id}/respond`, { action: respondTarget.action }).catch(() => ({ data: null }));
     if (data) {
-      setApprovals((prev) => prev.map((a) => a.id === respondData.id ? data.approval : a));
+      setApprovals((prev) => prev.map((a) => a.id === respondTarget.id ? data.approval : a));
     }
-    setRespondData(null);
-    setSignature('');
+    setRespondTarget(null);
   };
 
   if (loading) return <LoadingSkeleton />;
   if (error) return <p className="text-sm text-red-500 text-center py-8">{error}</p>;
+
+  const statusColors: Record<string, string> = {
+    approved: 'bg-emerald-100 text-emerald-700',
+    pending: 'bg-yellow-100 text-yellow-700',
+    rejected: 'bg-red-100 text-red-700',
+    edit_requested: 'bg-amber-100 text-amber-700',
+  };
+  const statusLabels: Record<string, string> = {
+    approved: '✅ تمت الموافقة',
+    pending: '⏳ قيد الانتظار',
+    rejected: '❌ مرفوض',
+    edit_requested: '✎ طلب تعديل',
+  };
 
   return (
     <div className="space-y-3">
@@ -43,34 +52,38 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
           <div className="flex justify-between items-start">
             <div>
               <h4 className="font-medium">{a.title}</h4>
-              {a.description && <p className="text-xs text-zinc-400 mt-0.5">{a.description}</p>}
+              {a.description && <p className="text-xs text-zinc-500 mt-0.5">{a.description}</p>}
               <p className="text-xs text-zinc-400 mt-0.5">المرجع: {a.reference_no}</p>
             </div>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              a.status === 'approved' ? 'bg-green-100 text-green-700' :
-              a.status === 'rejected' ? 'bg-red-100 text-red-700' :
-              a.status === 'edit_requested' ? 'bg-amber-100 text-amber-700' :
-              'bg-yellow-100 text-yellow-700'
-            }`}>
-              {a.status === 'approved' ? 'تمت الموافقة' :
-               a.status === 'rejected' ? 'مرفوض' :
-               a.status === 'edit_requested' ? 'طلب تعديل' : 'قيد الانتظار'}
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusColors[a.status] || ''}`}>
+              {statusLabels[a.status] || a.status}
             </span>
           </div>
 
-          {a.certificate && (
+          {a.files && a.files.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {a.files.map((f: any) => (
+                <a key={f.id} href={`/storage/${f.file_url}`} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-blue-600 underline bg-blue-50 px-2 py-0.5 rounded">
+                  📎 {f.name || 'ملف'}
+                </a>
+              ))}
+            </div>
+          )}
+
+          {a.certificate?.pdf_url && (
             <div className="mt-2 text-xs text-blue-600">
-              📄 <a href={a.certificate.pdf_url || a.certificate.certificate_url} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
+              📄 <a href={`/storage/${a.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
             </div>
           )}
 
           {a.status === 'pending' && (
             <div className="mt-3 flex gap-2">
-              <button onClick={() => setRespondData({ id: a.id, action: 'approved' })}
+              <button onClick={() => setRespondTarget({ id: a.id, action: 'approved' })}
                 className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700">✔ موافقة</button>
-              <button onClick={() => setRespondData({ id: a.id, action: 'rejected' })}
+              <button onClick={() => setRespondTarget({ id: a.id, action: 'rejected' })}
                 className="text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700">✘ رفض</button>
-              <button onClick={() => setRespondData({ id: a.id, action: 'edit_requested' })}
+              <button onClick={() => setRespondTarget({ id: a.id, action: 'edit_requested' })}
                 className="text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700">طلب تعديل</button>
             </div>
           )}
@@ -78,43 +91,21 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
       ))}
 
       <ConfirmDialog
-        open={!!respondData}
-        title={respondData?.action === 'approved' ? 'موافقة' : respondData?.action === 'rejected' ? 'رفض' : 'طلب تعديل'}
+        open={!!respondTarget}
+        title={respondTarget?.action === 'approved' ? 'موافقة' : respondTarget?.action === 'rejected' ? 'رفض' : 'طلب تعديل'}
         message={
-          respondData?.action === 'approved'
-            ? 'تأكيد الموافقة على هذا الطلب؟'
-            : respondData?.action === 'rejected'
+          respondTarget?.action === 'approved'
+            ? 'سيتم استخدام توقيعك الإلكتروني المحفوظ. هل أنت متأكد؟'
+            : respondTarget?.action === 'rejected'
             ? 'تأكيد رفض هذا الطلب؟'
             : 'تأكيد طلب تعديل هذا الطلب؟'
         }
         confirmLabel="تأكيد"
         cancelLabel="إلغاء"
-        variant={respondData?.action === 'rejected' ? 'danger' : 'default'}
-        onConfirm={() => {
-          if (respondData?.action === 'approved') {
-            setRespondData(null); setSignature('');
-          } else {
-            respond();
-          }
-        }}
-        onCancel={() => { setRespondData(null); setSignature(''); }}
+        variant={respondTarget?.action === 'rejected' ? 'danger' : 'default'}
+        onConfirm={respond}
+        onCancel={() => setRespondTarget(null)}
       />
-
-      {respondData?.action === 'approved' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30" onClick={() => { setRespondData(null); setSignature(''); }}>
-          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4 space-y-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-bold">التوقيع على الموافقة</h3>
-            <p className="text-xs text-zinc-500">اكتب اسمك كاملاً للتوقيع على الموافقة</p>
-            <textarea value={signature} onChange={(e) => setSignature(e.target.value)}
-              className="border rounded-lg px-4 py-3 text-lg font-medium w-full h-20 text-center"
-              placeholder="اكتب اسمك هنا..." />
-            <button onClick={respond} disabled={!signature.trim()}
-              className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
-              تأكيد التوقيع والموافقة
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

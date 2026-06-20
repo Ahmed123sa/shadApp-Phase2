@@ -13,6 +13,8 @@ export default function ChatTab({ wsId }: { wsId: number }) {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [showBuilder, setShowBuilder] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const load = () => {
@@ -27,9 +29,12 @@ export default function ChatTab({ wsId }: { wsId: number }) {
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
   const send = async () => {
-    if (!text.trim()) return;
-    const { data } = await api.post(`/workspaces/${wsId}/chat`, { message: text }).catch(() => ({ data: null }));
-    if (data) { setMessages((prev) => [...prev, data.message]); setText(''); }
+    if (!text.trim() && !uploadFile) return;
+    const form = new FormData();
+    if (text.trim()) form.append('message', text);
+    if (uploadFile) form.append('file', uploadFile);
+    const { data } = await api.post(`/workspaces/${wsId}/chat`, form).catch(() => ({ data: null }));
+    if (data) { setMessages((prev) => [...prev, data.message]); setText(''); setUploadFile(null); if (fileRef.current) fileRef.current.value = ''; }
   };
 
   const toggleAction = async (id: number) => {
@@ -49,6 +54,12 @@ export default function ChatTab({ wsId }: { wsId: number }) {
 
   if (loading) return <LoadingSkeleton message="جاري تحميل المحادثة..." />;
 
+  const actionResultLabel: Record<string, string> = {
+    approved: '✅ تمت الموافقة',
+    rejected: '❌ تم الرفض',
+    edit_requested: '✎ طلب تعديل',
+  };
+
   return (
     <div className="space-y-4">
       {!showBuilder ? (
@@ -66,17 +77,35 @@ export default function ChatTab({ wsId }: { wsId: number }) {
         {messages.length === 0 && contracts.length === 0 ? <EmptyState message="لا توجد رسائل بعد" /> : null}
         {messages.map((m) => {
           const isClient = m.sender_type === 'App\\Models\\Client';
+          const approval = m.approval;
+          const isPending = m.requires_action && !m.action_taken;
+          const isResponded = m.action_taken;
           return (
           <div key={m.id} className={`flex ${isClient ? 'justify-end' : 'justify-start'}`}>
             <div className="max-w-xs">
               <div className={`px-3 py-2 rounded-lg text-sm ${isClient ? 'bg-zinc-200 text-zinc-800' : 'bg-blue-100 text-blue-900'}`}>
                 <p className="text-xs text-zinc-500 mb-0.5">{isClient ? (m.sender?.name || 'العميل') : (m.sender?.name || 'المدير')}</p>
+                {m.type === 'file' && m.file_url && (
+                  <div className="mb-1">
+                    {m.file_url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
+                      <img src={m.file_url} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
+                    ) : (
+                      <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline text-xs">📎 عرض المرفق</a>
+                    )}
+                  </div>
+                )}
                 {m.message}
-                {m.requires_action && <p className="text-xs text-red-500 mt-1 font-medium">يتطلب موافقة العميل</p>}
+                {isPending && <p className="text-xs text-red-500 mt-1 font-medium">🏷️ طلب موافقة — قيد الانتظار</p>}
+                {isResponded && <p className={`text-xs mt-1 font-medium ${m.action_result === 'approved' ? 'text-emerald-600' : m.action_result === 'rejected' ? 'text-red-600' : 'text-amber-600'}`}>{actionResultLabel[m.action_result || '']}</p>}
+                {approval?.certificate?.pdf_url && (
+                  <a href={`/storage/${approval.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline block mt-1">📄 تحميل شهادة الموافقة</a>
+                )}
               </div>
-              <button onClick={() => toggleAction(m.id)} className={`text-xs mt-0.5 ${m.requires_action ? 'text-red-500' : 'text-zinc-400'} hover:underline`}>
-                {m.requires_action ? 'إلغاء طلب الموافقة' : 'طلب موافقة العميل'}
-              </button>
+              {!isClient && !m.action_taken && (
+                <button onClick={() => toggleAction(m.id)} className={`text-xs mt-0.5 ${m.requires_action ? 'text-red-500' : 'text-zinc-400'} hover:underline`}>
+                  {m.requires_action ? 'إلغاء طلب الموافقة' : 'طلب موافقة العميل'}
+                </button>
+              )}
             </div>
           </div>
           );
@@ -85,6 +114,9 @@ export default function ChatTab({ wsId }: { wsId: number }) {
       </div>
 
       <div className="flex gap-2">
+        <input type="file" ref={fileRef} className="hidden" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
+        <button onClick={() => fileRef.current?.click()} className="text-zinc-500 hover:text-blue-600 text-lg px-1" title="إرفاق ملف">📎</button>
+        {uploadFile && <span className="text-xs text-blue-600 self-center truncate max-w-24">{uploadFile.name}</span>}
         <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && send()}
           className="flex-1 border rounded-lg px-3 py-2 text-sm" placeholder="اكتب رسالة..." />
         <button onClick={send} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700">إرسال</button>

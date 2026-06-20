@@ -12,12 +12,17 @@ class ChatMessage extends Model
 
     protected $fillable = [
         'workspace_id', 'sender_type', 'sender_id', 'message',
-        'type', 'file_url', 'requires_action',
+        'type', 'file_url', 'requires_action', 'contract_id', 'approval_id',
+        'action_taken', 'action_result', 'responded_at',
     ];
 
     protected function casts(): array
     {
-        return ['requires_action' => 'boolean'];
+        return [
+            'requires_action' => 'boolean',
+            'action_taken' => 'boolean',
+            'responded_at' => 'datetime',
+        ];
     }
 
     public function workspace(): BelongsTo
@@ -28,5 +33,10 @@ class ChatMessage extends Model
     public function sender()
     {
         return $this->morphTo();
+    }
+
+    public function approval(): BelongsTo
+    {
+        return $this->belongsTo(Approval::class);
     }
 }

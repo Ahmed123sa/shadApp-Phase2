@@ -14,6 +14,7 @@ class FileEntry extends Model
 
     protected $fillable = [
         'workspace_id', 'contract_id', 'contract_required_document_id', 'document_definition_id',
+        'approval_id',
         'uploaded_by_type', 'uploaded_by_id',
         'file_url', 'name', 'type', 'size', 'status', 'reviewed_by', 'reviewed_at', 'rejection_reason',
     ];
@@ -51,5 +52,10 @@ class FileEntry extends Model
     public function contractRequiredDocument(): BelongsTo
     {
         return $this->belongsTo(ContractRequiredDocument::class);
+    }
+
+    public function approval(): BelongsTo
+    {
+        return $this->belongsTo(Approval::class);
     }
 }
