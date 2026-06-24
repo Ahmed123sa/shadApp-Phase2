@@ -21,12 +21,18 @@ Route::post('/auth/register', [AuthController::class, 'registerSuperAdmin']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::post('/auth/client/login', [AuthController::class, 'clientLogin']);
 
-// Chat — allows both admin (sanctum) and client (client) auth
+// Chat + Notifications — allows both admin (sanctum) and client (client) auth
 Route::middleware('auth.any:sanctum,client')->group(function () {
     Route::get('/workspaces/{workspace}/chat', [ChatController::class, 'index']);
     Route::post('/workspaces/{workspace}/chat', [ChatController::class, 'store']);
     Route::patch('/chat/{chatMessage}/require-action', [ChatController::class, 'toggleRequireAction']);
     Route::post('/chat/{chatMessage}/respond', [ChatController::class, 'respond']);
+
+    Route::get('/notifications', [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+    Route::post('/notifications/register-token', [NotificationController::class, 'registerToken']);
 });
 
 // Authenticated routes (Dashboard - SuperAdmin / AccountManager)
@@ -106,10 +112,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/reports', [AuditController::class, 'reports']);
 
     // Notifications
-    Route::get('/notifications', [NotificationController::class, 'index']);
-    Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
-    Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
-    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
-    Route::post('/notifications/register-token', [NotificationController::class, 'registerToken']);
     Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcm']);
 });

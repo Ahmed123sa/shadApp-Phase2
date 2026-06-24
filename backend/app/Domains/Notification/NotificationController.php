@@ -6,11 +6,12 @@ use App\Models\Client;
 use App\Models\MobileNotificationToken;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\FirebaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -42,24 +43,25 @@ class NotificationController extends Controller
     public function sendFcm(Request $request): JsonResponse
     {
         $request->validate([
-            'client_id' => 'required|exists:clients,id',
+            'user_id' => 'required|integer',
+            'user_type' => 'required|string',
             'title' => 'required|string|max:255',
             'body' => 'required|string',
         ]);
 
-        $client = Client::findOrFail($request->client_id);
-        $fcmKey = config('services.fcm.server_key');
+        try {
+            $firebase = app(FirebaseService::class);
+            $firebase->sendToUser(
+                $request->user_id,
+                $request->user_type,
+                ['title' => $request->title, 'body' => $request->body]
+            );
 
-        if (!$fcmKey) {
-            return response()->json(['message' => 'FCM not configured'], 501);
+            return response()->json(['sent' => true]);
+        } catch (\Exception $e) {
+            Log::warning('sendFcm failed: ' . $e->getMessage());
+            return response()->json(['sent' => false, 'message' => $e->getMessage()], 500);
         }
-
-        $response = Http::withToken($fcmKey)->post('https://fcm.googleapis.com/fcm/send', [
-            'to' => '/topics/client-' . $client->id,
-            'notification' => ['title' => $request->title, 'body' => $request->body],
-        ]);
-
-        return response()->json(['sent' => $response->successful()]);
     }
 
     public function index(Request $request): JsonResponse

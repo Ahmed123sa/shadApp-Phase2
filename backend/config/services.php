@@ -45,6 +45,7 @@ return [
     'fcm' => [
         'server_key' => env('FCM_SERVER_KEY'),
         'sender_id' => env('FCM_SENDER_ID'),
+        'service_account_path' => storage_path('app/firebase/service-account.json'),
     ],
 
 ];

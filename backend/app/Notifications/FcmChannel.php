@@ -3,8 +3,9 @@
 namespace App\Notifications;
 
 use App\Models\MobileNotificationToken;
+use App\Services\FirebaseService;
 use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class FcmChannel
 {
@@ -16,20 +17,25 @@ class FcmChannel
             ->where('tokenable_type', get_class($notifiable))
             ->pluck('token');
 
-        $fcmKey = config('services.fcm.server_key');
-        if (!$fcmKey || $tokens->isEmpty()) {
+        if ($tokens->isEmpty()) {
             return;
         }
 
+        $firebase = app(FirebaseService::class);
+
+        $notifData = [
+            'title' => $data['title'] ?? '',
+            'body' => $data['body'] ?? '',
+        ];
+
+        $customData = $data['data'] ?? [];
+
         foreach ($tokens as $token) {
-            Http::withToken($fcmKey)->post('https://fcm.googleapis.com/fcm/send', [
-                'to' => $token,
-                'notification' => [
-                    'title' => $data['title'],
-                    'body' => $data['body'],
-                ],
-                'data' => $data['data'] ?? [],
-            ]);
+            try {
+                $firebase->sendMessage($token, $notifData, $customData);
+            } catch (\Exception $e) {
+                Log::warning('FCM send failed: ' . $e->getMessage());
+            }
         }
     }
 }
