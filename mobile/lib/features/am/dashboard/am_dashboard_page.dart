@@ -432,6 +432,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       const SizedBox(height: 8),
       SizedBox(
         width: double.infinity,
+        child: _featuredCard(Icons.history, 'سجل النشاطات', () => context.push('/am/audit-logs')),
+      ),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: double.infinity,
         child: _featuredCard(Icons.add_circle, loc2.createMeeting, _createMeeting),
       ),
     ]);

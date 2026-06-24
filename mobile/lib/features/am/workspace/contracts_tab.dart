@@ -69,6 +69,34 @@ class _ContractsTabState extends State<ContractsTab> {
     }
   }
 
+  Future<void> _editContract(Map<String, dynamic> c) async {
+    await ContractBuilder.show(context, contractId: c['id'], contractData: c, onCreated: _load);
+  }
+
+  Future<void> _deleteContract(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف العقد'),
+        content: const Text('هل أنت متأكد من حذف هذا العقد؟ لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.delete('/contracts/$id');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف العقد')));
+        _load();
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل حذف العقد')));
+    }
+  }
+
   Future<void> _companyApproveWithSignature(Map<String, dynamic> contract) async {
     final signatureController = TextEditingController();
     final result = await showDialog<String>(
@@ -188,6 +216,25 @@ class _ContractsTabState extends State<ContractsTab> {
                             ),
                         ])),
                         StatusBadge(status: c['status'] ?? ''),
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert, size: 18),
+                          onSelected: (action) {
+                            if (action == 'edit') _editContract(c);
+                            if (action == 'delete') _deleteContract(c['id']);
+                            if (action == 'archive') _action(c['id'], 'archive', destructive: true);
+                          },
+                          itemBuilder: (_) {
+                            final items = <PopupMenuEntry<String>>[];
+                            if (c['status'] == 'draft' || c['status'] == 'edit_requested') {
+                              items.add(const PopupMenuItem(value: 'edit', child: ListTile(leading: Icon(Icons.edit, size: 18), title: Text('تعديل'), dense: true)));
+                              items.add(const PopupMenuItem(value: 'delete', child: ListTile(leading: Icon(Icons.delete, size: 18, color: ShadColors.error), title: Text('حذف', style: TextStyle(color: ShadColors.error)), dense: true)));
+                            }
+                            if (c['status'] == 'company_approved') {
+                              items.add(const PopupMenuItem(value: 'archive', child: ListTile(leading: Icon(Icons.archive, size: 18), title: Text('أرشفة'), dense: true)));
+                            }
+                            return items;
+                          },
+                        ),
                       ]),
                       if (['client_approved', 'company_approved', 'completed'].contains(c['status']) && c['pdf_url'] != null) ...[
                         const SizedBox(height: 12),

@@ -10,6 +10,7 @@ import '../features/am/reports/reports_page.dart';
 import '../features/signature/signature_page.dart';
 import '../features/preview/preview_page.dart';
 import '../features/notifications/notifications_page.dart';
+import '../features/am/reports/audit_log_page.dart';
 
 GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
   return GoRouter(
@@ -24,6 +25,7 @@ GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
       GoRoute(path: '/am/managers', builder: (_, __) => const AccountManagersPage()),
       GoRoute(path: '/am/workspace/:id', builder: (_, state) => const AmWorkspacePage()),
       GoRoute(path: '/am/reports', builder: (_, __) => const ReportsPage()),
+      GoRoute(path: '/am/audit-logs', builder: (_, __) => const AuditLogPage()),
       GoRoute(path: '/notifications', builder: (_, __) => const NotificationsPage()),
     ],
   );

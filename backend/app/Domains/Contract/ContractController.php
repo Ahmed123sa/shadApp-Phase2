@@ -96,11 +96,39 @@ class ContractController extends Controller
         $request->validate([
             'title' => 'string|max:255',
             'value' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|string|max:10',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
+            'clauses' => 'nullable|array',
+            'clauses.*.content' => 'required|string',
+            'clauses.*.type' => 'in:fixed,optional,custom',
+            'required_documents' => 'nullable|array',
+            'required_documents.*.name' => 'required|string|max:255',
         ]);
 
-        $contract->update($request->only(['title', 'value', 'start_date', 'end_date']));
+        $contract->update($request->only(['title', 'value', 'currency', 'start_date', 'end_date']));
+
+        if ($request->has('clauses')) {
+            $contract->clauses()->delete();
+            foreach ($request->clauses as $i => $clause) {
+                $contract->clauses()->create([
+                    'content' => $clause['content'],
+                    'type' => $clause['type'] ?? 'custom',
+                    'sort_order' => $i,
+                ]);
+            }
+        }
+
+        if ($request->has('required_documents')) {
+            $contract->requiredDocuments()->delete();
+            foreach ($request->required_documents as $i => $doc) {
+                $contract->requiredDocuments()->create([
+                    'name' => $doc['name'],
+                    'is_required' => true,
+                    'sort_order' => $i,
+                ]);
+            }
+        }
 
         AuditLog::create([
             'auditable_type' => Contract::class,
@@ -110,7 +138,7 @@ class ContractController extends Controller
             'ip_address' => $request->ip(),
         ]);
 
-        return response()->json(['contract' => $contract->fresh()->load('clauses')]);
+        return response()->json(['contract' => $contract->fresh()->load('clauses', 'requiredDocuments')]);
     }
 
     public function destroy(Request $request, Contract $contract): JsonResponse

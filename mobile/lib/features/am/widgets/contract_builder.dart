@@ -5,13 +5,15 @@ import '../../../core/theme.dart';
 class ContractBuilder extends StatefulWidget {
   final VoidCallback? onCreated;
   final bool isAdditional;
+  final int? contractId;
+  final Map<String, dynamic>? contractData;
 
-  const ContractBuilder({super.key, this.onCreated, this.isAdditional = false});
+  const ContractBuilder({super.key, this.onCreated, this.isAdditional = false, this.contractId, this.contractData});
 
   @override
   State<ContractBuilder> createState() => _ContractBuilderState();
 
-  static Future<void> show(BuildContext context, {VoidCallback? onCreated, bool isAdditional = false}) {
+  static Future<void> show(BuildContext context, {VoidCallback? onCreated, bool isAdditional = false, int? contractId, Map<String, dynamic>? contractData}) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -21,7 +23,7 @@ class ContractBuilder extends StatefulWidget {
         maxChildSize: 0.9,
         minChildSize: 0.4,
         expand: false,
-        builder: (_, scrollController) => ContractBuilder(onCreated: onCreated, isAdditional: isAdditional),
+        builder: (_, scrollController) => ContractBuilder(onCreated: onCreated, isAdditional: isAdditional, contractId: contractId, contractData: contractData),
       ),
     );
   }
@@ -36,12 +38,28 @@ class _ContractBuilderState extends State<ContractBuilder> {
   DateTime? _endDate;
   bool _saving = false;
   bool _templatesLoading = true;
-  final List<String> _customClauses = [];
-  final List<String> _requiredDocs = [];
+  List<String> _customClauses = [];
+  List<String> _requiredDocs = [];
   final _requiredDocController = TextEditingController();
 
   List<Map<String, dynamic>> _fixedClauses = [];
   List<Map<String, dynamic>> _optionalClauses = [];
+
+  bool get _isEditing => widget.contractId != null;
+
+  void _populateFromContract(Map<String, dynamic> data) {
+    _titleController.text = data['title'] ?? '';
+    _valueController.text = (data['value'] ?? 0).toString();
+    _selectedCurrency = data['currency'] as String? ?? 'SAR';
+    if (data['start_date'] != null) _startDate = DateTime.tryParse(data['start_date'].toString());
+    if (data['end_date'] != null) _endDate = DateTime.tryParse(data['end_date'].toString());
+    final clauses = data['clauses'] as List<dynamic>? ?? [];
+    _fixedClauses = clauses.where((c) => c['type'] == 'fixed').map((c) => {'content': c['content'], 'type': 'fixed'}).toList().cast<Map<String, dynamic>>();
+    _optionalClauses = clauses.where((c) => c['type'] == 'optional').map((c) => {'content': c['content'], 'selected': true}).toList();
+    _customClauses = clauses.where((c) => c['type'] == 'custom').map((c) => c['content'] as String).toList();
+    final docs = data['required_documents'] as List<dynamic>? ?? [];
+    _requiredDocs = docs.map((d) => d is Map ? d['name'] as String : d.toString()).toList();
+  }
 
   static const _currencies = ['SAR', 'USD', 'EUR', 'AED', 'EGP', 'KWD', 'QAR', 'BHD', 'OMR'];
   static const _currencyLabels = {
@@ -70,10 +88,17 @@ class _ContractBuilderState extends State<ContractBuilder> {
   @override
   void initState() {
     super.initState();
+    if (_isEditing && widget.contractData != null) {
+      _populateFromContract(widget.contractData!);
+    }
     _loadTemplates();
   }
 
   Future<void> _loadTemplates() async {
+    if (_isEditing) {
+      if (mounted) setState(() => _templatesLoading = false);
+      return;
+    }
     try {
       final data = await _api.get('/contract-clause-templates');
       final templates = data['templates'] as List<dynamic>? ?? [];
@@ -120,7 +145,7 @@ class _ContractBuilderState extends State<ContractBuilder> {
     final requiredDocs = _requiredDocs.map((name) => {'name': name}).toList();
 
     try {
-      final data = await _api.post('/workspaces/${_api.workspaceId}/contracts', {
+      final payload = {
         'title': _titleController.text.trim(),
         'value': value,
         'currency': _selectedCurrency,
@@ -129,20 +154,29 @@ class _ContractBuilderState extends State<ContractBuilder> {
         if (_startDate != null) 'start_date': _startDate!.toIso8601String(),
         if (_endDate != null) 'end_date': _endDate!.toIso8601String(),
         if (widget.isAdditional) 'contract_type': 'additional',
-      });
-      if (!mounted) return;
-      final contractId = data['contract']['id'] as int;
-      try {
-        await _api.post('/contracts/$contractId/send');
+      };
+      if (_isEditing) {
+        await _api.put('/contracts/${widget.contractId}', payload);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم إنشاء وإرسال العقد')));
-      } catch (_) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ تم إنشاء العقد ولكن فشل الإرسال')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم تحديث العقد')));
+        Navigator.pop(context);
+        widget.onCreated?.call();
+      } else {
+        final data = await _api.post('/workspaces/${_api.workspaceId}/contracts', payload);
+        if (!mounted) return;
+        final contractId = data['contract']['id'] as int;
+        try {
+          await _api.post('/contracts/$contractId/send');
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم إنشاء وإرسال العقد')));
+        } catch (_) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('⚠️ تم إنشاء العقد ولكن فشل الإرسال')));
+        }
+        Navigator.pop(context);
+        widget.onCreated?.call();
       }
-      Navigator.pop(context);
-      widget.onCreated?.call();
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل إنشاء العقد')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_isEditing ? 'فشل تحديث العقد' : 'فشل إنشاء العقد')));
     }
     if (mounted) setState(() => _saving = false);
   }
@@ -165,7 +199,7 @@ class _ContractBuilderState extends State<ContractBuilder> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 12),
             child: Row(children: [
-              Text(widget.isAdditional ? 'إنشاء عقد خدمة إضافية' : 'إنشاء عقد جديد', style: ShadTypography.cardTitle),
+              Text(_isEditing ? 'تعديل العقد' : widget.isAdditional ? 'إنشاء عقد خدمة إضافية' : 'إنشاء عقد جديد', style: ShadTypography.cardTitle),
               const Spacer(),
               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
             ]),
@@ -339,7 +373,7 @@ class _ContractBuilderState extends State<ContractBuilder> {
               onPressed: _saving ? null : _save,
               child: _saving
                   ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                  : const Text('إنشاء وإرسال'),
+                  : Text(_isEditing ? 'حفظ التعديلات' : 'إنشاء وإرسال'),
             ),
           ),
         ],

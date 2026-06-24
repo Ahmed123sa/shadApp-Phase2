@@ -104,6 +104,30 @@ class _FilesTabState extends State<FilesTab> {
     }
   }
 
+  Future<void> _deleteDefinition(int defId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف تعريف المستند'),
+        content: const Text('هل أنت متأكد من حذف هذا التعريف؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error), child: const Text('حذف')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.delete('/workspaces/${_api.workspaceId}/document-definitions/$defId');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم حذف التعريف')));
+        _load();
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل حذف التعريف')));
+    }
+  }
+
   Future<void> _reviewFile(int fileId, String action) async {
     String? reason;
     if (action == 'rejected') {
@@ -175,13 +199,23 @@ class _FilesTabState extends State<FilesTab> {
                   leading: const Icon(Icons.description, color: ShadColors.primary),
                   title: Text(d['name'] ?? '', style: ShadTypography.cardTitle),
                   subtitle: d['description'] != null ? Text(d['description'], style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)) : null,
-                  trailing: d['is_required'] == true
-                    ? Container(
+                  trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+                    if (d['is_required'] == true)
+                      Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(color: ShadColors.errorLight, borderRadius: BorderRadius.circular(12)),
                         child: Text('مطلوب', style: ShadTypography.caption.copyWith(color: ShadColors.error)),
-                      )
-                    : null,
+                      ),
+                    if (!isSA) ...[
+                      const SizedBox(width: 4),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: ShadColors.error),
+                        onPressed: () => _deleteDefinition(d['id']),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
+                    ],
+                  ]),
                 ),
               )),
               const SizedBox(height: 16),
