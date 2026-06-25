@@ -21,6 +21,14 @@ use Illuminate\Support\Facades\Mail;
 
 class SendContractEmailNotification
 {
+    private function getOfficialEmails(): array
+    {
+        return User::where('role', User::ROLE_SUPER_ADMIN)
+            ->whereNotNull('official_email')
+            ->pluck('official_email')
+            ->toArray();
+    }
+
     public function handleContractSent(ContractSent $event): void
     {
         $contract = $event->contract;
@@ -40,6 +48,14 @@ class SendContractEmailNotification
                 Mail::to($manager->email)->send(new ContractSentMail($contract));
             } catch (\Exception $e) {
                 Log::warning('Failed to send contract sent email to manager: ' . $e->getMessage());
+            }
+        }
+
+        foreach ($this->getOfficialEmails() as $officialEmail) {
+            try {
+                Mail::to($officialEmail)->send(new ContractSentMail($contract));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send contract sent email to official: ' . $e->getMessage());
             }
         }
 
@@ -72,6 +88,12 @@ class SendContractEmailNotification
         foreach ($admins as $admin) {
             if ($admin->email && $admin->id !== $manager?->id) {
                 $recipients->push(['email' => $admin->email, 'user' => $admin]);
+            }
+        }
+
+        foreach ($this->getOfficialEmails() as $officialEmail) {
+            if ($recipients->doesntContain(fn($r) => $r['email'] === $officialEmail)) {
+                $recipients->push(['email' => $officialEmail, 'user' => null]);
             }
         }
 
@@ -109,6 +131,14 @@ class SendContractEmailNotification
                 Mail::to($client->email)->send(new ContractCompanyApprovedMail($contract, $pdfPath));
             } catch (\Exception $e) {
                 Log::warning('Failed to send company approved email: ' . $e->getMessage());
+            }
+        }
+
+        foreach ($this->getOfficialEmails() as $officialEmail) {
+            try {
+                Mail::to($officialEmail)->send(new ContractCompanyApprovedMail($contract, $pdfPath));
+            } catch (\Exception $e) {
+                Log::warning('Failed to send company approved email to official: ' . $e->getMessage());
             }
         }
 

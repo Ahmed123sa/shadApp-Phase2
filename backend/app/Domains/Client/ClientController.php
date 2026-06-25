@@ -103,11 +103,15 @@ class ClientController extends Controller
             'industry' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'status' => 'in:active,inactive,blocked',
+            'password' => 'nullable|string|min:6',
         ]);
 
-        $client->update($request->only([
-            'company_name', 'contact_person', 'phone', 'country', 'industry', 'notes', 'status',
-        ]));
+        $fillableFields = ['company_name', 'contact_person', 'phone', 'country', 'industry', 'notes', 'status'];
+        if ($request->filled('password')) {
+            $fillableFields[] = 'password';
+        }
+
+        $client->update($request->only($fillableFields));
 
         return response()->json(['client' => $client->fresh()->load('workspace')]);
     }
@@ -127,6 +131,23 @@ class ClientController extends Controller
             'signature_data' => $signatureData,
             'signed_at' => now(),
         ]);
+
+        return response()->json(['client' => $client->fresh()]);
+    }
+
+    public function profileUpdate(Request $request, Client $client): JsonResponse
+    {
+        $request->validate([
+            'contact_person' => 'sometimes|string|max:255',
+            'avatar' => 'nullable|image|max:2048',
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $client->avatar_url = \Illuminate\Support\Facades\Storage::url($path);
+        }
+
+        $client->update($request->only(['contact_person']));
 
         return response()->json(['client' => $client->fresh()]);
     }

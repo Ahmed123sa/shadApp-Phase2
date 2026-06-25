@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -95,5 +96,45 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json(['user' => $request->user()]);
+    }
+
+    public function sign(Request $request): JsonResponse
+    {
+        if ($request->hasFile('signature_image')) {
+            $request->validate(['signature_image' => 'required|image|mimes:png|max:2048']);
+            $path = $request->file('signature_image')->store('signatures', 'public');
+            $signatureData = Storage::url($path);
+        } else {
+            $request->validate(['signature' => 'required|string']);
+            $signatureData = $request->signature;
+        }
+
+        $user = $request->user();
+        $user->update([
+            'signature_data' => $signatureData,
+            'signed_at' => now(),
+        ]);
+
+        return response()->json(['user' => $user->fresh()]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'official_email' => 'nullable|email',
+            'avatar' => 'nullable|image|max:2048',
+        ]);
+
+        $user = $request->user();
+
+        if ($request->hasFile('avatar')) {
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar_url = Storage::url($path);
+        }
+
+        $user->update($request->only(['name', 'official_email']));
+
+        return response()->json(['user' => $user->fresh()]);
     }
 }

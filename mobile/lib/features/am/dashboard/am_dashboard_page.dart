@@ -111,52 +111,6 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     }
   }
 
-  Future<void> _editClient(Map<String, dynamic> client) async {
-    final nameCtrl = TextEditingController(text: client['company_name'] as String? ?? '');
-    final personCtrl = TextEditingController(text: client['contact_person'] as String? ?? '');
-    final phoneCtrl = TextEditingController(text: client['phone'] as String? ?? '');
-    final countryCtrl = TextEditingController(text: client['country'] as String? ?? '');
-    final industryCtrl = TextEditingController(text: client['industry'] as String? ?? '');
-    final notesCtrl = TextEditingController(text: client['notes'] as String? ?? '');
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('تعديل العميل'),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'اسم الشركة'), textInputAction: TextInputAction.next),
-          const SizedBox(height: 12),
-          TextField(controller: personCtrl, decoration: const InputDecoration(labelText: 'الشخص المسؤول'), textInputAction: TextInputAction.next),
-          const SizedBox(height: 12),
-          TextField(controller: phoneCtrl, decoration: const InputDecoration(labelText: 'رقم الهاتف'), keyboardType: TextInputType.phone, textInputAction: TextInputAction.next),
-          const SizedBox(height: 12),
-          TextField(controller: countryCtrl, decoration: const InputDecoration(labelText: 'البلد'), textInputAction: TextInputAction.next),
-          const SizedBox(height: 12),
-          TextField(controller: industryCtrl, decoration: const InputDecoration(labelText: 'المجال / الصناعة'), textInputAction: TextInputAction.next),
-          const SizedBox(height: 12),
-          TextField(controller: notesCtrl, decoration: const InputDecoration(labelText: 'ملاحظات'), maxLines: 2),
-        ])),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('حفظ')),
-        ],
-      ),
-    );
-    if (saved != true) return;
-    try {
-      await _api.put('/clients/${client['id']}', {
-        'company_name': nameCtrl.text.trim(),
-        'contact_person': personCtrl.text.trim(),
-        'phone': phoneCtrl.text.trim(),
-        'country': countryCtrl.text.trim(),
-        'industry': industryCtrl.text.trim(),
-        'notes': notesCtrl.text.trim(),
-      });
-      _load();
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تعديل العميل')));
-    }
-  }
-
   void _openClient(Map<String, dynamic> client) async {
     final ws = client['workspace'] as Map<String, dynamic>?;
     if (ws == null) {
@@ -439,6 +393,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         width: double.infinity,
         child: _featuredCard(Icons.add_circle, loc2.createMeeting, _createMeeting),
       ),
+      const SizedBox(height: 8),
+      SizedBox(
+        width: double.infinity,
+        child: _featuredCard(Icons.settings, 'الإعدادات', () => context.push('/am/settings')),
+      ),
     ]);
   }
 
@@ -535,13 +494,16 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
             const SizedBox(height: 8),
             Row(mainAxisAlignment: MainAxisAlignment.end, children: [
               InkWell(
-                onTap: () => _editClient(client),
+                onTap: () async {
+                  final changed = await context.push<bool>('/am/clients/${client['id']}');
+                  if (changed == true) _load();
+                },
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(mainAxisSize: MainAxisSize.min, children: [
                     const Icon(Icons.edit, size: 14, color: ShadColors.gold),
                     const SizedBox(width: 4),
-                    const Text('تعديل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
+                    const Text('تفاصيل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
                   ]),
                 ),
               ),

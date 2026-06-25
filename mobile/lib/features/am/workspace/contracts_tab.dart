@@ -98,11 +98,67 @@ class _ContractsTabState extends State<ContractsTab> {
   }
 
   Future<void> _companyApproveWithSignature(Map<String, dynamic> contract) async {
+    final messenger = ScaffoldMessenger.of(context);
+    String? savedSignature;
+
+    try {
+      final me = await _api.get('/auth/me');
+      final user = me['user'] as Map<String, dynamic>?;
+      if (user != null) {
+        savedSignature = user['signature_data'] as String?;
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    if (savedSignature != null && savedSignature.isNotEmpty) {
+      final sig = savedSignature;
+      final useSaved = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(AppLocalizations.of(ctx)!.companyApprove),
+          content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('اعتماد عقد: ${contract['title']}', style: ShadTypography.cardBody),
+            const SizedBox(height: 16),
+            const Text('سيتم استخدام توقيعك المحفوظ:', style: TextStyle(color: ShadColors.textSecondary)),
+            const SizedBox(height: 8),
+            if (sig.startsWith('http') || sig.startsWith('/storage'))
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.network(
+                  sig.startsWith('http') ? sig : '${_api.baseUrl.replaceAll('/api', '')}$sig',
+                  height: 50, fit: BoxFit.contain,
+                ),
+              )
+            else
+              Text(sig, style: const TextStyle(fontSize: 24, fontFamily: 'DancingScript')),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppLocalizations.of(ctx)!.cancel)),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: Text(AppLocalizations.of(ctx)!.confirm)),
+          ],
+        ),
+      );
+      if (useSaved != true) return;
+      try {
+        await _api.post('/contracts/${contract['id']}/company-approve', {});
+        if (mounted) {
+          messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
+          _load();
+        }
+      } catch (_) {
+        if (mounted) messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
+      }
+      return;
+    }
+
+    if (!mounted) return;
+
     final signatureController = TextEditingController();
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(AppLocalizations.of(context)!.companyApprove),
+        title: Text(AppLocalizations.of(ctx)!.companyApprove),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -111,8 +167,8 @@ class _ContractsTabState extends State<ContractsTab> {
             TextField(
               controller: signatureController,
               decoration: InputDecoration(
-                labelText: AppLocalizations.of(context)!.companySignature,
-                hintText: AppLocalizations.of(context)!.signatureHint,
+                labelText: AppLocalizations.of(ctx)!.companySignature,
+                hintText: AppLocalizations.of(ctx)!.signatureHint,
               ),
               maxLines: 2,
             ),
@@ -121,18 +177,18 @@ class _ContractsTabState extends State<ContractsTab> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text(AppLocalizations.of(context)!.cancel),
+            child: Text(AppLocalizations.of(ctx)!.cancel),
           ),
           ElevatedButton(
             onPressed: () {
               final sig = signatureController.text.trim();
               if (sig.isEmpty) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.enterSignature)));
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text(AppLocalizations.of(ctx)!.enterSignature)));
                 return;
               }
               Navigator.pop(ctx, sig);
             },
-            child: Text(AppLocalizations.of(context)!.confirm),
+            child: Text(AppLocalizations.of(ctx)!.confirm),
           ),
         ],
       ),
@@ -141,11 +197,11 @@ class _ContractsTabState extends State<ContractsTab> {
     try {
       await _api.post('/contracts/${contract['id']}/company-approve', {'signature': result});
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
+        messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.contractUpdated)));
         _load();
       }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
+      if (mounted) messenger.showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.errorOccurred)));
     }
   }
 

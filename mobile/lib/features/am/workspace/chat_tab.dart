@@ -161,6 +161,10 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Widget _textBubble(dynamic m, bool isClient, bool isPending) {
+    final sender = m['sender'] as Map<String, dynamic>?;
+    final senderAvatarUrl = sender?['avatar_url'] as String?;
+    final senderName = sender?['name'] as String? ?? '';
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -175,10 +179,27 @@ class _ChatTabState extends State<ChatTab> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (m['sender'] != null)
+          if (sender != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
-              child: Text(m['sender']['name'] ?? '', style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: ShadColors.cardBorder,
+                    backgroundImage: senderAvatarUrl != null
+                        ? NetworkImage(_api.resolveFileUrl(senderAvatarUrl))
+                        : null,
+                    child: senderAvatarUrl == null
+                        ? Text(senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: ShadColors.textPrimary))
+                        : null,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(senderName, style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary)),
+                ],
+              ),
             ),
           if (m['type'] == 'file' && m['file_url'] != null)
             InkWell(

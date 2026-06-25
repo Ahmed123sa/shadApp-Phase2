@@ -39,6 +39,8 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
+    Route::post('/auth/sign', [AuthController::class, 'sign']);
+    Route::match(['put', 'post'], '/auth/me', [AuthController::class, 'updateProfile']);
 
     // Account Manager management (SuperAdmin only)
     Route::get('/account-managers', [AccountManagerController::class, 'index']);
@@ -58,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Client signature (client auth or manager)
     Route::post('/clients/{client}/sign', [ClientController::class, 'sign']);
+    Route::match(['put', 'post'], '/clients/{client}/profile', [ClientController::class, 'profileUpdate']);
 
     // Workspace
     Route::post('/workspaces', [WorkspaceController::class, 'store']);

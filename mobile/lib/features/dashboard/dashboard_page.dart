@@ -298,6 +298,7 @@ class _DashboardPageState extends State<DashboardPage> {
             onPressed: () => LocaleProvider().toggle(),
             tooltip: 'تغيير اللغة',
           ),
+          IconButton(icon: const Icon(Icons.settings_outlined, size: 20), onPressed: () => context.push('/settings'), tooltip: 'الإعدادات'),
           IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout, tooltip: 'تسجيل الخروج'),
         ],
       ),

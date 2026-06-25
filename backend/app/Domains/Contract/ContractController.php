@@ -211,7 +211,7 @@ class ContractController extends Controller
         $contract->update([
             'status' => 'company_approved',
             'company_signed_at' => now(),
-            'company_signature_data' => $request->signature ?? $request->user()->name,
+            'company_signature_data' => $request->signature ?? $request->user()->signature_data ?? $request->user()->name,
             'company_signature_type' => $request->signature && (str_starts_with($request->signature, '/storage/') || str_starts_with($request->signature, 'http')) ? 'image' : 'text',
         ]);
 

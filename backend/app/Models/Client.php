@@ -18,6 +18,7 @@ class Client extends Model
         'company_name', 'contact_person', 'email', 'phone', 'password',
         'manager_id', 'status', 'notes', 'country', 'industry', 'client_type',
         'contract_value', 'payment_status', 'signature_data', 'signed_at',
+        'avatar_url',
     ];
 
     protected $hidden = ['password'];
