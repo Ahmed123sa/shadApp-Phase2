@@ -55,6 +55,8 @@ class _ChatPageState extends State<ChatPage> {
     final cid = _api.userId;
     if (cid != null) {
       ReverbService().connectForClient(cid);
+    } else {
+      ReverbService().disconnect();
     }
     super.dispose();
   }

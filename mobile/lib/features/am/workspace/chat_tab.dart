@@ -271,7 +271,12 @@ class _ChatTabState extends State<ChatTab> {
   void dispose() {
     _controller.dispose();
     _scrollController.dispose();
-    ReverbService().disconnect();
+    final uid = _api.userId;
+    if (uid != null) {
+      ReverbService().connectForUser(uid);
+    } else {
+      ReverbService().disconnect();
+    }
     super.dispose();
   }
 
