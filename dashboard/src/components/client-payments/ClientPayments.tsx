@@ -27,7 +27,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         setPayments(payData.payments || []);
         setMethods(payData.available_methods || []);
 
-        const contracts = contRes.data.contracts || [];
+        const contracts = contRes.data.contracts?.data ?? contRes.data.contracts ?? [];
         const payable = contracts.find((c: any) =>
           c.status === 'company_approved' || c.status === 'completed'
         );
@@ -35,7 +35,8 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
           setPayableContract(payable);
           if (!payData.payments?.length) setAmount(String(payable.value));
         }
-      } catch {
+      } catch (e) {
+        console.error(e);
         setError('فشل تحميل المدفوعات');
       }
     };

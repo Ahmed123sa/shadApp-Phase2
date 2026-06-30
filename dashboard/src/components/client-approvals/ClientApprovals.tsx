@@ -15,7 +15,7 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
   useEffect(() => {
     api.get(`/workspaces/${wsId}/approvals`)
       .then(({ data }) => setApprovals(data.approvals || []))
-      .catch(() => setError('فشل تحميل طلبات الموافقة'))
+      .catch((e) => { console.error(e); setError('فشل تحميل طلبات الموافقة'); })
       .finally(() => setLoading(false));
   }, [wsId]);
 
