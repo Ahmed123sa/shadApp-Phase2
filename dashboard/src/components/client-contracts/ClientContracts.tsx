@@ -19,7 +19,10 @@ export default function ClientContracts({ wsId, onGoToPayments }: { wsId: number
   const load = () => {
     setLoading(true);
     api.get(`/workspaces/${wsId}/contracts`)
-      .then(({ data }) => setContracts(data.contracts || []))
+      .then(({ data }) => {
+        const list = data.contracts?.data ?? data.contracts ?? [];
+        setContracts(Array.isArray(list) ? list : []);
+      })
       .catch(() => setError('فشل تحميل العقود'))
       .finally(() => setLoading(false));
   };
@@ -29,7 +32,7 @@ export default function ClientContracts({ wsId, onGoToPayments }: { wsId: number
   const doAction = async (id: number, action: string) => {
     const { data } = await api.post(`/contracts/${id}/client-action`, { action }).catch(() => ({ data: null }));
     if (data) {
-      setContracts((prev) => prev.map((c) => c.id === id ? data.contract : c));
+      setContracts((prev) => Array.isArray(prev) ? prev.map((c) => c.id === id ? data.contract : c) : prev);
       setViewContract(null);
     }
     setConfirmAction(null);
