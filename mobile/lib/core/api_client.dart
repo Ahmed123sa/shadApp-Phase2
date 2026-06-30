@@ -91,7 +91,8 @@ class ApiClient {
   String resolveFileUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     final base = baseUrl.replaceFirst('/api', '');
-    return '$base$url';
+    final cleaned = url.startsWith('/') ? url.substring(1) : url;
+    return '$base/storage/$cleaned';
   }
 
   Future<void> setBaseUrl(String url) async {

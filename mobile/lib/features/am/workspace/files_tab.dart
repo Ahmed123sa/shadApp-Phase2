@@ -276,7 +276,7 @@ class _FilesTabState extends State<FilesTab> {
                         ),
                       ],
                     ]),
-                    trailing: f['status'] == 'pending' && !isSA
+                    trailing: f['status'] == 'pending' && isSA
                       ? Row(mainAxisSize: MainAxisSize.min, children: [
                           IconButton(
                             icon: const Icon(Icons.check, color: ShadColors.success),

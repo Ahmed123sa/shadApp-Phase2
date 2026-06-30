@@ -1,11 +1,18 @@
 'use client';
-
+ 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import UploadFileModal from './UploadFileModal';
 
+const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+const resolveFileUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+};
+ 
 export default function ClientFiles({ wsId }: { wsId: number }) {
   const [files, setFiles] = useState<any[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
@@ -48,13 +55,18 @@ export default function ClientFiles({ wsId }: { wsId: number }) {
               </p>
               {f.rejection_reason && <p className="text-xs text-red-500 mt-1">سبب الرفض: {f.rejection_reason}</p>}
             </div>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              f.status === 'approved' ? 'bg-green-900/30 text-green-400' :
-              f.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
-              'bg-yellow-900/30 text-yellow-400'
-            }`}>
-              {f.status === 'approved' ? 'مقبول' : f.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                f.status === 'approved' ? 'bg-green-900/30 text-green-400' :
+                f.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
+                'bg-yellow-900/30 text-yellow-400'
+              }`}>
+                {f.status === 'approved' ? 'مقبول' : f.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+              </span>
+              {f.file_url && (
+                <a href={resolveFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">عرض</a>
+              )}
+            </div>
           </div>
         ))}
       </div>

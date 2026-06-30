@@ -6,6 +6,13 @@ import { getUser } from '@/lib/auth';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+const resolveFileUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+};
+
 export default function FilesTab({ wsId }: { wsId: number }) {
   const isSA = getUser()?.role === 'super_admin';
   const [files, setFiles] = useState<any[]>([]);
@@ -83,7 +90,10 @@ export default function FilesTab({ wsId }: { wsId: number }) {
               <span className={`px-2 py-0.5 rounded-full text-xs ${f.status === 'approved' ? 'bg-green-900/30 text-green-400' : f.status === 'rejected' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
                 {f.status === 'approved' ? 'مقبول' : f.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
               </span>
-              {!isSA && f.status === 'pending' && (
+              {f.file_url && (
+                <a href={resolveFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">عرض</a>
+              )}
+              {isSA && f.status === 'pending' && (
                 <>
                   <button onClick={() => reviewFile(f.id, 'approved')} className="text-xs text-green-600 hover:underline">قبول</button>
                   <button onClick={() => { const r = prompt('سبب الرفض:'); if (r) reviewFile(f.id, 'rejected', r); }} className="text-xs text-red-600 hover:underline">رفض</button>

@@ -39,26 +39,33 @@ class FileController extends Controller
             'contract_required_document_id' => $request->contract_required_document_id,
             'uploaded_by_type' => get_class($request->user()),
             'uploaded_by_id' => $request->user()->id,
-            'file_url' => $path,
+            'file_url' => Storage::url($path),
             'name' => $request->name ?? $request->file('file')->getClientOriginalName(),
             'type' => $request->file('file')->getMimeType(),
             'size' => $request->file('file')->getSize(),
             'status' => 'pending',
         ]);
 
-        AuditLog::create([
+        $auditData = [
             'auditable_type' => FileEntry::class,
             'auditable_id' => $file->id,
-            'user_id' => $request->user()->id,
             'action' => 'file.uploaded',
             'ip_address' => $request->ip(),
-        ]);
+        ];
+        if ($request->user() instanceof \App\Models\User) {
+            $auditData['user_id'] = $request->user()->id;
+        }
+        AuditLog::create($auditData);
 
         return response()->json(['file' => $file->load('documentDefinition')], 201);
     }
 
     public function review(Request $request, FileEntry $file): JsonResponse
     {
+        if (!$request->user()->isSuperAdmin()) {
+            abort(403, 'Only Super Admin can review documents');
+        }
+
         $request->validate([
             'action' => 'required|in:approved,rejected',
             'rejection_reason' => 'required_if:action,rejected|nullable|string',
@@ -71,13 +78,16 @@ class FileController extends Controller
             'rejection_reason' => $request->rejection_reason,
         ]);
 
-        AuditLog::create([
+        $auditData = [
             'auditable_type' => FileEntry::class,
             'auditable_id' => $file->id,
-            'user_id' => $request->user()->id,
             'action' => 'file.' . $request->action,
             'ip_address' => $request->ip(),
-        ]);
+        ];
+        if ($request->user() instanceof \App\Models\User) {
+            $auditData['user_id'] = $request->user()->id;
+        }
+        AuditLog::create($auditData);
 
         return response()->json(['file' => $file->fresh()->load('documentDefinition', 'reviewer')]);
     }
