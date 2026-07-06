@@ -44,9 +44,18 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     if (uid == null) return;
     final reverb = ReverbService();
     reverb.connectForUser(uid);
-    reverb.onNotificationReceived = () {
+    reverb.onNotificationReceived = (payload) {
       _loadNotifs();
       _load();
+      if (!mounted) return;
+      final msg = (payload['data'] as Map?)?['message'] as String? ?? 'إشعار جديد';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg, style: const TextStyle(fontSize: 13)),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
+      ));
     };
   }
 

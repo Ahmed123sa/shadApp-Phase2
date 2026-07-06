@@ -178,6 +178,12 @@ class _ChatPageState extends State<ChatPage> {
                                       padding: const EdgeInsets.only(bottom: 6),
                                       child: Text(m['message'], style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
                                     ),
+                                  if (m['created_at'] != null && (m['message'] != null && m['message'].toString().isNotEmpty))
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Text(_formatTime(m['created_at'] as String?),
+                                        style: ShadTypography.chatTimestamp.copyWith(fontSize: 9, color: ShadColors.textDisabled)),
+                                    ),
                                   ChatContractCard(
                                     contract: contract,
                                     isClient: isClient,
@@ -248,6 +254,12 @@ class _ChatPageState extends State<ChatPage> {
                                       ),
                                     ),
                                   Text(m['message'] ?? '', style: ShadTypography.chatBubble.copyWith(color: isClient ? Colors.white : ShadColors.textPrimary)),
+                                  if (m['created_at'] != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(top: 3),
+                                      child: Text(_formatTime(m['created_at'] as String?),
+                                        style: ShadTypography.chatTimestamp.copyWith(color: isClient ? Colors.white54 : ShadColors.textDisabled, fontSize: 9)),
+                                    ),
                                   if (isPending)
                                     Padding(
                                       padding: const EdgeInsets.only(top: 6),
@@ -338,6 +350,16 @@ class _ChatPageState extends State<ChatPage> {
         ]),
       ),
     ]);
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
+    } catch (_) { return ''; }
   }
 
   Widget _actionChip(String label, Color color, VoidCallback onTap) {

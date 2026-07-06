@@ -91,9 +91,18 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     if (cid == null) return;
     final reverb = ReverbService();
     reverb.connectForClient(cid);
-    reverb.onNotificationReceived = () {
+    reverb.onNotificationReceived = (payload) {
       _loadNotifs();
       _contractRefreshNotifier.value++;
+      if (!mounted) return;
+      final msg = (payload['data'] as Map?)?['message'] as String? ?? (payload['data'] as Map?)?['text'] as String? ?? 'إشعار جديد';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(msg, style: const TextStyle(fontSize: 13)),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(12),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
+      ));
     };
     reverb.onContractStatusChanged = () {
       _loadClientData();

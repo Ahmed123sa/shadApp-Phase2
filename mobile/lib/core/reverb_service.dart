@@ -21,7 +21,7 @@ class ReverbService {
   DateTime _lastNotifTime = DateTime.now().subtract(const Duration(seconds: 1));
   void Function(Map<String, dynamic>)? onMessageReceived;
   void Function()? onContractStatusChanged;
-  void Function()? onNotificationReceived;
+  void Function(Map<String, dynamic>)? onNotificationReceived;
 
   void configure({String? host, String? port, String? key}) {
     if (host != null) this.host = host;
@@ -99,7 +99,8 @@ class ReverbService {
             final now = DateTime.now();
             if (now.difference(_lastNotifTime) < const Duration(seconds: 1)) return;
             _lastNotifTime = now;
-            onNotificationReceived?.call();
+            final payload = jsonDecode(msg['data'] as String) as Map<String, dynamic>;
+            onNotificationReceived?.call(payload);
           }
         },
         onError: (_) => _reconnect(),

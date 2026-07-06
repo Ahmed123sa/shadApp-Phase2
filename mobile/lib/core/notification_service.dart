@@ -91,15 +91,20 @@ class NotificationService {
 
   Future<void> _showLocalNotification(RemoteMessage message) async {
     final notification = message.notification;
-    if (notification == null) return;
-
     final data = message.data;
+
+    final title = notification?.title ?? data['title'] as String? ?? 'ShadApp';
+    final body = notification?.body ?? data['body'] as String?;
+    if (body == null) return;
+
     final payload = data.isNotEmpty ? jsonEncode(data) : null;
 
+    final id = DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF;
+
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch,
-      notification.title,
-      notification.body,
+      id,
+      title,
+      body,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'shadapp_channel_v2',
