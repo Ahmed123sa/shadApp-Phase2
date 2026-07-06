@@ -1,0 +1,87 @@
+1-في اللوج ان بيدج دول المفروض مبيظهروش غير اثناء عمل باسورد جديد صح؟○
+8 أحرف على الأقل
+○
+حرف إنجليزي واحد
+○
+رقم واحد 
+وفيه ف الانبوت بتاع الباسورد اتنين اظهار الباسورد!!!
+2- اللوجو فين؟ 
+3-اللوج ان بيج ف الموبايل الانجليزي والعربي سوا ليه!! المفروض يكون لغة واحدة ولما اغير اللغة من فوق تتغير صح كدا؟
+4-عاوز اللوج ان ف الويب تكون زي الموبايل
+5-جوا الداشبورد ف الادمين والاكونت مانتجر في الويب فيه اعدادات والملف الشخصي شيل الملف الشخصي وسيب الاعدادات 
+6-ف الداشبورد اكونت مانتجر اثناء اضافة عميل ليه مفيش انشاء باسورد يدوي برضو؟؟ وشيل قيمة العقد اثناء انشاء عميل
+7-ف داشبورد العميل ويب لما بيدخل على الموافقات 
+
+
+1/1
+
+Next.js 16.2.6 (stale)
+Turbopack
+Runtime TypeError
+
+
+
+approvals.map is not a function
+src/components/client-approvals/ClientApprovals.tsx (50:18) @ ClientApprovals
+
+
+  48 |     <div className="space-y-3">
+  49 |       {approvals.length === 0 ? <EmptyState message="لا توجد طلبات موافقة" /> : null}
+> 50 |       {approvals.map((a) => (
+     |                  ^
+  51 |         <div key={a.id} className="border border-[var(--color-card-border)] rounded-lg p-4">
+  52 |           <div className="flex justify-between items-start">
+  53 |             <div>
+Call Stack
+15
+
+Show 12 ignore-listed frame(s)
+ClientApprovals
+src/components/client-approvals/ClientApprovals.tsx (50:18)
+TabContent
+src/app/client-dashboard/page.tsx (204:30)
+ClientDashboardPage
+src/app/client-dashboard/page.tsx (192:17)
+والاجتماعات
+
+
+1/1
+
+Next.js 16.2.6 (stale)
+Turbopack
+Runtime TypeError
+
+
+
+meetings.map is not a function
+src/components/client-meetings/ClientMeetings.tsx (32:17) @ ClientMeetings
+
+
+  30 |     <div className="space-y-3">
+  31 |       {meetings.length === 0 ? <EmptyState message="لا توجد اجتماعات" /> : null}
+> 32 |       {meetings.map((m) => (
+     |                 ^
+  33 |         <div key={m.id} className="border border-[var(--color-card-border)] rounded-lg p-4">
+  34 |           <div className="flex justify-between items-start">
+  35 |             <div>
+Call Stack
+15
+
+Show 12 ignore-listed frame(s)
+ClientMeetings
+src/components/client-meetings/ClientMeetings.tsx (32:17)
+TabContent
+src/app/client-dashboard/page.tsx (207:31)
+ClientDashboardPage
+src/app/client-dashboard/page.tsx (192:17)
+8-ليه اثناء انشاء العقد ف الويب مبيكونش فيه اختيارات العملة زي الموبايل؟
+9-ليه العميل ف المدفوعات برضو مش بيظهرلو اختيار العملة؟؟
+10-لما العميل بيجي يرفع مستند مطلوب مع العقد بيختار الملف وكل حاجه بيقولي جاري الرفع وبعدين بيعمل ريفريش وبعدين بيقوله لم يتم رفع المستند ولما اخرج من تبويب العقود ويدخل تاني للعقد بيلاقي ان الملف اترع وقيد المراجعة وبيوصل للادمين والاكونت مانتجر
+
+11-ليه اثبات الدفع اللي بيوصل للأدمين والاكونت مانتجر لما بضغط عليه http://localhost:3000/dashboard/clients/payment-proofs/workspace-2/YJ0Q84p2qoOFGPVUG9Neg1MaDoCRDCLfiFhU8J3R.jpg
+بيجبلي 404 
+وليه من صلاحية الاكونت مانتجر قبول الدفع!! المفروض الأدمين بس 
+12-لنفرض ان العميل عاوز يغير  اثبات الدفع عمله غلط مثلا ليه ميقدرش يعدل ؟؟
+13-ليه ف الموبايل مفيش اثناء اثبات الدفع يكون تصوير مباشر باستخدام الكاميرا؟؟
+14-لما مساحة العمل ببتفعل والشات يشتغل لما العميل يبعت رسالة يقول فشل الارسال لكنها يتظهر ف الشات ولما الاكونت برضو يبعت رسالة نفس الفكرة بتحصل الكلام دا ف الويب 
+15-ليه الموافقات اللي بتم معدتش بتظهر ف تبويب الموافقات ف الاكونت مانتجر بتظهر ف الادمين والعميل؟ وليه لما بحمل الموافقة بيجيلي ايرور؟ 
