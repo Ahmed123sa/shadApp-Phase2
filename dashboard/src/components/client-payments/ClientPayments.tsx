@@ -12,9 +12,11 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('SAR');
   const [methodType, setMethodType] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
 
   useEffect(() => {
     const loadAll = async () => {
@@ -50,19 +52,44 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
     instapay: 'Instapay', vodafone_cash: 'فودافون كاش', mobile_wallet: 'محفظة موبايل',
   };
 
+  const startEdit = (p: any) => {
+    setEditingPayment(p);
+    setAmount(String(p.amount));
+    setCurrency(p.currency || 'SAR');
+    setMethodType(p.method_type);
+    setProofFile(null);
+  };
+
+  const cancelEdit = () => {
+    setEditingPayment(null);
+    setAmount('');
+    setCurrency('SAR');
+    setMethodType('');
+    setProofFile(null);
+  };
+
   const submit = async () => {
     if (!amount || !methodType) return;
     setSaving(true);
     const form = new FormData();
     form.append('amount', amount);
+    form.append('currency', currency);
     form.append('method_type', methodType);
     if (proofFile) form.append('proof_file', proofFile);
-    const { data } = await api.post(`/workspaces/${wsId}/payments`, form).catch(() => ({ data: null }));
+    if (editingPayment) {
+      form.append('_method', 'PUT');
+    }
+    const url = editingPayment
+      ? `/workspaces/${wsId}/payments/${editingPayment.id}`
+      : `/workspaces/${wsId}/payments`;
+    const { data } = await api.post(url, form).catch(() => ({ data: null }));
     if (data) {
-      setPayments((prev) => [...prev, data.payment]);
-      setAmount('');
-      setMethodType('');
-      setProofFile(null);
+      if (editingPayment) {
+        setPayments((prev) => prev.map((p) => p.id === editingPayment.id ? data.payment : p));
+      } else {
+        setPayments((prev) => [...prev, data.payment]);
+      }
+      cancelEdit();
     }
     setSaving(false);
   };
@@ -117,6 +144,12 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
           <div className="space-y-3">
             <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" placeholder="المبلغ"
               className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)] placeholder-[var(--color-text-disabled)]" />
+            <select value={currency} onChange={(e) => setCurrency(e.target.value)}
+              className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)]">
+              <option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار أمريكي (USD)</option><option value="EUR">يورو (EUR)</option>
+              <option value="AED">درهم إماراتي (AED)</option><option value="EGP">جنيه مصري (EGP)</option><option value="KWD">دينار كويتي (KWD)</option>
+              <option value="QAR">ريال قطري (QAR)</option><option value="BHD">دينار بحريني (BHD)</option><option value="OMR">ريال عماني (OMR)</option>
+            </select>
             <select value={methodType} onChange={(e) => setMethodType(e.target.value)}
               className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)]">
               <option value="">طريقة الدفع</option>
@@ -129,10 +162,18 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
                 {proofFile ? proofFile.name : '+ اختيار ملف الإثبات'}
               </span>
             </label>
-            <button onClick={submit} disabled={saving || !amount || !methodType}
-              className="w-full bg-[var(--color-primary)] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
-              {saving ? 'جاري الحفظ...' : 'إرسال إثبات الدفع'}
-            </button>
+            <div className="flex gap-2">
+              <button onClick={submit} disabled={saving || !amount || !methodType}
+                className="flex-1 bg-[var(--color-primary)] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
+                {saving ? 'جاري الحفظ...' : editingPayment ? 'تحديث' : 'إرسال إثبات الدفع'}
+              </button>
+              {editingPayment && (
+                <button onClick={cancelEdit} type="button"
+                  className="bg-[var(--color-input-fill)] px-4 py-2.5 rounded-lg text-sm hover:bg-[var(--color-card-border)]">
+                  إلغاء
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -149,17 +190,24 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
               <p className="text-xs text-[var(--color-text-disabled)]">{methodLabels[p.method_type] || p.method_type}</p>
               {linkedContract && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">📄 {linkedContract.title}</p>}
               {p.proof_file_url && (
-                <a href={p.proof_file_url} target="_blank" rel="noopener noreferrer"
+                <a href={`${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${p.proof_file_url.replace(/^\/?storage\//, '')}`}
+                  target="_blank" rel="noopener noreferrer"
                   className="text-xs text-[var(--color-gold)] hover:underline">📎 عرض الإثبات</a>
               )}
             </div>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-              p.status === 'approved' ? 'bg-green-900/30 text-green-400' :
-              p.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
-              'bg-yellow-900/30 text-yellow-400'
-            }`}>
-              {p.status === 'approved' ? 'مقبول' : p.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
-            </span>
+            <div className="flex items-center gap-2">
+              {p.status === 'pending' && (
+                <button onClick={() => startEdit(p)}
+                  className="text-xs text-[var(--color-gold)] hover:underline">✏️ تعديل</button>
+              )}
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                p.status === 'approved' ? 'bg-green-900/30 text-green-400' :
+                p.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
+                'bg-yellow-900/30 text-yellow-400'
+              }`}>
+                {p.status === 'approved' ? 'مقبول' : p.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+              </span>
+            </div>
           </div>
           );
         })}

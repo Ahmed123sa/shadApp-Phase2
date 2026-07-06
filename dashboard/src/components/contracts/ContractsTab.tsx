@@ -13,7 +13,7 @@ export default function ContractsTab({ wsId }: { wsId: number }) {
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: '', value: '', start_date: '', end_date: '' });
+  const [form, setForm] = useState({ title: '', value: '', currency: 'SAR', start_date: '', end_date: '' });
   const [selectedOptional, setSelectedOptional] = useState<Record<number, boolean>>({});
   const [customClauses, setCustomClauses] = useState<string[]>([]);
   const [error, setError] = useState('');
@@ -54,7 +54,7 @@ export default function ContractsTab({ wsId }: { wsId: number }) {
     const required_documents = requiredDocs.map((name) => ({ name }));
 
     const { data } = await api.post(`/workspaces/${wsId}/contracts`, { ...form, clauses, required_documents }).catch(() => ({ data: null }));
-    if (data) { setContracts((prev) => [...prev, data.contract]); setShowForm(false); setForm({ title: '', value: '', start_date: '', end_date: '' }); setSelectedOptional({}); setCustomClauses([]); setNewCustom(''); setRequiredDocs([]); setNewReqDoc(''); }
+    if (data) { setContracts((prev) => [...prev, data.contract]); setShowForm(false); setForm({ title: '', value: '', currency: 'SAR', start_date: '', end_date: '' }); setSelectedOptional({}); setCustomClauses([]); setNewCustom(''); setRequiredDocs([]); setNewReqDoc(''); }
   };
 
   const toggleOptional = (id: number) => setSelectedOptional((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -103,7 +103,12 @@ export default function ContractsTab({ wsId }: { wsId: number }) {
         <div className="space-y-2 border border-[var(--color-card-border)] rounded-lg p-4 bg-[var(--color-card-border)]">
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان العقد" className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)]" />
           <div className="flex gap-2">
-            <input value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} type="number" placeholder="القيمة" className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm w-32 bg-[var(--color-input-fill)] text-[var(--color-foreground)]" />
+            <input value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} type="number" placeholder="القيمة" className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm w-28 bg-[var(--color-input-fill)] text-[var(--color-foreground)]" />
+            <select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm w-24 bg-[var(--color-input-fill)] text-[var(--color-foreground)]">
+              <option value="SAR">SAR</option><option value="USD">USD</option><option value="EUR">EUR</option>
+              <option value="AED">AED</option><option value="EGP">EGP</option><option value="KWD">KWD</option>
+              <option value="QAR">QAR</option><option value="BHD">BHD</option><option value="OMR">OMR</option>
+            </select>
             <input value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} type="date" className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm flex-1 bg-[var(--color-input-fill)] text-[var(--color-foreground)]" />
             <input value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} type="date" className="border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm flex-1 bg-[var(--color-input-fill)] text-[var(--color-foreground)]" />
           </div>

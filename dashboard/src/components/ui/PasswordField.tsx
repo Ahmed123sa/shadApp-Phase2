@@ -56,12 +56,13 @@ export default function PasswordField({
           disabled={disabled}
           name={name}
           dir="ltr"
+          autoComplete="new-password"
           className={`rounded-lg px-4 py-2 text-sm w-full focus:outline-none focus:ring-2 focus:ring-[var(--color-gold)] pe-10 bg-[var(--color-input-fill)] border border-[var(--color-input-border)] text-[var(--color-foreground)] ${className}`}
         />
         <button
           type="button"
           onClick={() => setVisible(!visible)}
-          className="absolute inset-y-0 end-0 flex items-center px-3 text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)]"
+          className="absolute top-1/2 -translate-y-1/2 end-0 flex items-center px-3 text-[var(--color-text-disabled)] hover:text-[var(--color-text-secondary)] h-10"
           tabIndex={-1}
         >
           {visible ? (

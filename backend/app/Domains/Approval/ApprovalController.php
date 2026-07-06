@@ -27,7 +27,6 @@ class ApprovalController extends Controller
         $user = $request->user();
         return response()->json(['approvals' => $workspace->approvals()
             ->with('certificate', 'requester', 'files', 'chatMessage')
-            ->when($user instanceof \App\Models\User && $user->isAccountManager(), fn($q) => $q->where('requested_by', '!=', $user->id))
             ->latest()
             ->paginate(30)]);
     }

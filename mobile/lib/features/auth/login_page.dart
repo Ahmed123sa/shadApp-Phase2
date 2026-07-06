@@ -78,6 +78,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isAr = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -94,9 +95,9 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 const ShadLogo(size: 96),
                 const SizedBox(height: 12),
-                Text('Welcome back', style: ShadTypography.largeTitle.copyWith(fontSize: 30, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-                const SizedBox(height: 4),
-                Text('مرحباً بعودتك', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Amiri', height: 1.3)),
+                Text(isAr ? 'مرحباً بعودتك' : 'Welcome back', style: isAr
+                  ? TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Amiri', height: 1.3)
+                  : ShadTypography.largeTitle.copyWith(fontSize: 30, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
                 const SizedBox(height: 32),
 
                 Container(
@@ -140,11 +141,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Email
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Text('Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                        const SizedBox(width: 8),
-                        Text('البريد الإلكتروني', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
-                      ]),
+                      Text(isAr ? 'البريد الإلكتروني' : 'Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
                       const SizedBox(height: 6),
                       TextField(
                         controller: _emailController,
@@ -164,11 +161,7 @@ class _LoginPageState extends State<LoginPage> {
 
                     // Password
                     Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Row(children: [
-                        Text('Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                        const SizedBox(width: 8),
-                        Text('كلمة المرور', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
-                      ]),
+                      Text(isAr ? 'كلمة المرور' : 'Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
                       const SizedBox(height: 6),
                       TextField(
                         controller: _passwordController,
@@ -191,18 +184,14 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(height: 12),
 
                     // Forgot password
-                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      TextButton(
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
                         onPressed: () {},
                         style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text('Forgot Password?', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'Archivo')),
+                        child: Text(isAr ? 'نسيت كلمة المرور؟' : 'Forgot Password?', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
                       ),
-                      TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text('نسيت كلمة المرور؟', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
-                      ),
-                    ]),
+                    ),
                     const SizedBox(height: 16),
 
                     SizedBox(
@@ -218,7 +207,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: _loading
                           ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
                           : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Text('Sign In / تسجيل الدخول', style: ShadTypography.buttonLabel),
+                              Text(isAr ? 'تسجيل الدخول' : 'Sign In', style: ShadTypography.buttonLabel),
                               const SizedBox(width: 8),
                               const Icon(Icons.login, size: 18),
                             ]),
@@ -231,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                       const Expanded(child: Divider(color: ShadColors.cardBorder)),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text('or / أو', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                        child: Text(isAr ? 'أو' : 'or', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
                       ),
                       const Expanded(child: Divider(color: ShadColors.cardBorder)),
                     ]),
@@ -248,14 +237,12 @@ class _LoginPageState extends State<LoginPage> {
 
                 const SizedBox(height: 24),
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text("Don't have an account?", style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                  const SizedBox(width: 4),
-                  Text('ليس لديك حساب؟', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+                  Text(isAr ? 'ليس لديك حساب؟' : "Don't have an account?", style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
                   const SizedBox(width: 8),
                   TextButton(
                     onPressed: () {},
                     style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: Text('Request Access / طلب دخول', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontWeight: FontWeight.bold)),
+                    child: Text(isAr ? 'طلب دخول' : 'Request Access', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontWeight: FontWeight.bold)),
                   ),
                 ]),
                 const SizedBox(height: 16),

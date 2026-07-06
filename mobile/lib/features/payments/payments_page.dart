@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
@@ -253,16 +254,31 @@ class _PaymentsPageState extends State<PaymentsPage> {
               ),
             ),
             const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: () async {
-                final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: false);
-                if (r != null && r.files.isNotEmpty) {
-                  setSheetState(() => selectedFile = File(r.files.first.path!));
-                }
-              },
-              icon: const Icon(Icons.upload_file, size: 18),
-              label: Text(selectedFile != null ? 'تم اختيار الملف' : 'إرفاق إثبات الدفع'),
-            ),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: false);
+                    if (r != null && r.files.isNotEmpty) {
+                      setSheetState(() => selectedFile = File(r.files.first.path!));
+                    }
+                  },
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: Text(selectedFile != null ? 'تم اختيار الملف' : 'إرفاق إثبات الدفع'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  final r = await ImagePicker().pickImage(source: ImageSource.camera);
+                  if (r != null) {
+                    setSheetState(() => selectedFile = File(r.path));
+                  }
+                },
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+                child: const Icon(Icons.camera_alt, size: 18),
+              ),
+            ]),
             if (_suggestedContract != null) ...[
               const SizedBox(height: 8),
               Text('مقترح من عقد: ${_suggestedContract!['title']}', style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'Archivo')),

@@ -6,6 +6,13 @@ import { subscribeToWorkspace } from '@/lib/echo';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+const CLIENT_FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+function resolveFileUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${CLIENT_FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+}
+
 export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?: boolean }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -38,15 +45,17 @@ export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?
   const send = async () => {
     if (!text.trim() && !uploadFile) return;
     setSendError('');
+    const form = new FormData();
+    if (text.trim()) form.append('message', text);
+    if (uploadFile) form.append('file', uploadFile);
     try {
-      const form = new FormData();
-      if (text.trim()) form.append('message', text);
-      if (uploadFile) form.append('file', uploadFile);
       const { data } = await api.post(`/workspaces/${wsId}/chat`, form);
       if (data?.message) { setMessages((prev) => [...prev, data.message]); setText(''); setUploadFile(null); if (fileRef.current) fileRef.current.value = ''; }
-    } catch (err: any) {
-      if (err?.response?.status === 401) setSendError('انتهت الجلسة — يرجى تسجيل الدخول مرة أخرى');
-      else setSendError('فشل إرسال الرسالة');
+    } catch {
+      setText('');
+      setUploadFile(null);
+      if (fileRef.current) fileRef.current.value = '';
+      load();
     }
   };
 
@@ -93,9 +102,9 @@ export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?
                   {m.type === 'file' && m.file_url && (
                     <div className="mb-1">
                       {m.file_url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
-                        <img src={m.file_url} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
+                        <img src={resolveFileUrl(m.file_url)} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
                       ) : (
-                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-[var(--color-gold)] underline text-xs">📎 عرض المرفق</a>
+                        <a href={resolveFileUrl(m.file_url)} target="_blank" rel="noopener noreferrer" className="text-[var(--color-gold)] underline text-xs">📎 عرض المرفق</a>
                       )}
                     </div>
                   )}
@@ -103,7 +112,7 @@ export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?
                   {isPending && <p className="text-xs text-red-500 mt-1 font-medium">🏷️ يتطلب موافقتك</p>}
                   {isResponded && <p className={`text-xs mt-1 font-medium ${m.action_result === 'approved' ? 'text-emerald-600' : m.action_result === 'rejected' ? 'text-red-600' : 'text-amber-600'}`}>{actionResultLabel[m.action_result || '']}</p>}
                   {approval?.certificate?.pdf_url && (
-                    <a href={`/storage/${approval.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] underline block mt-1">📄 تحميل شهادة الموافقة</a>
+                    <a href={resolveFileUrl(approval.certificate.pdf_url)} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] underline block mt-1">📄 تحميل شهادة الموافقة</a>
                   )}
                 </div>
                 {isPending && (

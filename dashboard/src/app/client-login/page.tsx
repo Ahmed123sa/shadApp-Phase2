@@ -4,28 +4,28 @@ import { useState } from 'react';
 import { clientLogin, getClient } from '@/lib/client-auth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import PasswordField from '@/components/ui/PasswordField';
 
 export default function ClientLoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [visible, setVisible] = useState(false);
   const router = useRouter();
 
   const existing = getClient();
   if (existing) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4">
-        <div className="w-full max-w-md bg-[var(--color-card)] rounded-2xl shadow-lg p-8 text-center border border-[var(--color-card-border)]">
-          <h1 className="text-2xl font-bold mb-2">مرحباً {existing.contact_person}</h1>
-          <p className="text-[var(--color-text-secondary)] mb-4">{existing.company_name}</p>
+      <div className="min-h-screen flex items-center justify-center bg-[#1A1A1A] px-4" dir="rtl">
+        <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-2xl p-8 text-center border border-[#D4AF37]/20">
+          <h1 className="text-2xl font-bold mb-2 text-white">مرحباً {existing.contact_person}</h1>
+          <p className="text-[#D4AF37] mb-4">{existing.company_name}</p>
           <div className="flex gap-2 justify-center">
-            <Link href="/client-dashboard" className="bg-[var(--color-primary)] text-white px-6 py-2 rounded-lg text-sm hover:bg-[var(--color-primary-dark)]">
+            <Link href="/client-dashboard" className="bg-[#941414] text-white px-6 py-2 rounded-lg text-sm hover:bg-[#7a1010]">
               الدخول إلى اللوحة
             </Link>
             <button onClick={() => { localStorage.removeItem('client_token'); localStorage.removeItem('client'); window.location.reload(); }}
-              className="bg-[var(--color-input-fill)] px-6 py-2 rounded-lg text-sm hover:bg-zinc-200">
+              className="bg-white/10 text-white/70 px-6 py-2 rounded-lg text-sm hover:bg-white/20">
               خروج
             </button>
           </div>
@@ -50,34 +50,62 @@ export default function ClientLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[var(--color-background)] px-4">
-      <div className="w-full max-w-md bg-[var(--color-card)] rounded-2xl shadow-lg p-8 border border-[var(--color-card-border)]">
-        <h1 className="text-2xl font-bold text-center mb-1">ShadApp</h1>
-        <p className="text-[var(--color-text-secondary)] text-center text-sm mb-6">تسجيل دخول العميل</p>
+    <div className="min-h-screen flex items-center justify-center bg-[#1A1A1A] px-4" dir="rtl">
+      <div className="w-full max-w-md bg-[#1E1E1E] rounded-2xl shadow-2xl p-8 border border-[#D4AF37]/20 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#941414]/20 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-[#D4AF37]/10 rounded-full translate-y-1/2 -translate-x-1/2" />
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg">{error}</div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-[var(--color-foreground)] mb-1">البريد الإلكتروني</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-[var(--color-input-fill)] text-[var(--color-foreground)]"
-              required dir="ltr" />
+        <div className="relative">
+          <div className="flex justify-center mb-4">
+            <img src="/logo.jpg" alt="ShadApp" className="w-20 h-20 rounded-2xl object-cover shadow-lg" />
           </div>
+          <h1 className="text-2xl font-bold text-center mb-1 text-white" style={{ fontFamily: "'Playfair Display', serif" }}>ShadApp</h1>
+          <p className="text-[#D4AF37] text-center text-sm mb-6">تسجيل دخول العميل</p>
 
-          <PasswordField value={password} onChange={setPassword} label="كلمة المرور" showStrength={false} showRequirements={false} required />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-[#941414]/20 text-[#D4AF37] text-sm p-3 rounded-lg border border-[#941414]/30">{error}</div>
+            )}
 
-          <button type="submit" disabled={loading}
-            className="w-full bg-[var(--color-primary)] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[var(--color-primary-dark)] disabled:opacity-50">
-            {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
-          </button>
-        </form>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-1">البريد الإلكتروني</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                className="w-full border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37] bg-white/5 text-white placeholder-white/30"
+                required dir="ltr" />
+            </div>
 
-        <p className="text-center text-sm text-[var(--color-text-secondary)] mt-4">
-          <Link href="/login" className="text-[var(--color-gold)] hover:underline">تسجيل دخول المدير</Link>
-        </p>
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-1">كلمة المرور</label>
+              <div className="relative">
+                <input type={visible ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)}
+                  className="w-full border border-white/10 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37] bg-white/5 text-white placeholder-white/30 pe-10"
+                  required dir="ltr" autoComplete="new-password" />
+                <button type="button" onClick={() => setVisible(!visible)}
+                  className="absolute top-1/2 -translate-y-1/2 end-0 flex items-center px-3 text-white/40 hover:text-white/60 h-10" tabIndex={-1}>
+                  {visible ? (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" disabled={loading}
+              className="w-full bg-[#941414] text-white rounded-lg py-2.5 text-sm font-medium hover:bg-[#7a1010] disabled:opacity-50 transition-colors">
+              {loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول'}
+            </button>
+          </form>
+
+          <p className="text-center text-sm text-white/50 mt-6">
+            <Link href="/login" className="text-[#D4AF37] hover:underline">تسجيل دخول المدير</Link>
+          </p>
+        </div>
       </div>
     </div>
   );

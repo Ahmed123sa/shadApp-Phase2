@@ -10,6 +10,7 @@ export default function UploadProofModal({ wsId, availableMethods, onClose, onCr
   onCreated: (payment: any) => void;
 }) {
   const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState('SAR');
   const [methodType, setMethodType] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
@@ -24,6 +25,7 @@ export default function UploadProofModal({ wsId, availableMethods, onClose, onCr
     setSaving(true);
     const form = new FormData();
     form.append('amount', amount);
+    form.append('currency', currency);
     form.append('method_type', methodType);
     if (proofFile) form.append('proof_file', proofFile);
     const { data } = await api.post(`/workspaces/${wsId}/payments`, form).catch(() => ({ data: null }));
@@ -41,6 +43,12 @@ export default function UploadProofModal({ wsId, availableMethods, onClose, onCr
 
         <input value={amount} onChange={(e) => setAmount(e.target.value)} type="number" placeholder="المبلغ"
           className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)] placeholder-[var(--color-text-disabled)]" />
+
+        <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)]">
+          <option value="SAR">ريال سعودي (SAR)</option><option value="USD">دولار أمريكي (USD)</option><option value="EUR">يورو (EUR)</option>
+          <option value="AED">درهم إماراتي (AED)</option><option value="EGP">جنيه مصري (EGP)</option><option value="KWD">دينار كويتي (KWD)</option>
+          <option value="QAR">ريال قطري (QAR)</option><option value="BHD">دينار بحريني (BHD)</option><option value="OMR">ريال عماني (OMR)</option>
+        </select>
 
         <select value={methodType} onChange={(e) => setMethodType(e.target.value)} className="border border-[var(--color-input-border)] rounded-lg px-4 py-2 text-sm w-full bg-[var(--color-input-fill)] text-[var(--color-foreground)]">
           <option value="">طريقة الدفع</option>

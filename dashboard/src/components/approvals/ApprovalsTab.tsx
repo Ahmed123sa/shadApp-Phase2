@@ -6,6 +6,13 @@ import { getUser } from '@/lib/auth';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+const APPROVALS_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+function resolveFileUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${APPROVALS_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+}
+
 export default function ApprovalsTab({ wsId }: { wsId: number }) {
   const isSA = getUser()?.role === 'super_admin';
   const [approvals, setApprovals] = useState<any[]>([]);
@@ -109,7 +116,7 @@ export default function ApprovalsTab({ wsId }: { wsId: number }) {
             {/* Certificate */}
             {a.certificate && (
               <div className="mt-2 text-xs text-[var(--color-gold)]">
-                <a href={`/storage/${a.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer">📄 تحميل شهادة الموافقة</a>
+                <a href={resolveFileUrl(a.certificate.pdf_url)} target="_blank" rel="noopener noreferrer">📄 تحميل شهادة الموافقة</a>
               </div>
             )}
           </div>

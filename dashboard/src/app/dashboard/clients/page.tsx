@@ -5,12 +5,13 @@ import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import PasswordField from '@/components/ui/PasswordField';
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ company_name: '', contact_person: '', email: '', phone: '', contract_value: '', notes: '', send_email: true });
+  const [form, setForm] = useState({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', send_email: true });
   const [newCreds, setNewCreds] = useState<any>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState({ company_name: '', contact_person: '', phone: '', notes: '' });
@@ -36,7 +37,7 @@ export default function ClientsPage() {
       setClients((prev) => [data.client, ...prev]);
       setNewCreds(data.credentials);
       setShowCreate(false);
-      setForm({ company_name: '', contact_person: '', email: '', phone: '', contract_value: '', notes: '', send_email: true });
+      setForm({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', send_email: true });
     } catch (err: any) {
       setCreateError(err?.response?.data?.message || 'فشل إنشاء العميل');
     }
@@ -87,8 +88,8 @@ export default function ClientsPage() {
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="الشخص المسؤول" value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} required />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" type="email" placeholder="البريد الإلكتروني" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required dir="ltr" />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
-            <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" type="number" placeholder="قيمة العقد" value={form.contract_value} onChange={(e) => setForm({ ...form, contract_value: e.target.value })} />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <PasswordField value={form.password} onChange={(v) => setForm({ ...form, password: v })} label="كلمة المرور (اختياري)" placeholder="اتركه فارغاً للإنشاء التلقائي" showStrength={false} showRequirements={false} opt />
           </div>
           <label className="flex items-center gap-2 text-sm text-[var(--color-foreground)] cursor-pointer">
             <input type="checkbox" checked={form.send_email} onChange={(e) => setForm({ ...form, send_email: e.target.checked })} className="rounded" />

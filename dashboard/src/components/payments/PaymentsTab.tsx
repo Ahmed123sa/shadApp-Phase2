@@ -7,11 +7,18 @@ import type { Client } from '@/types';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+function resolveFileUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+}
+
 export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId: number; client: Client; onWorkspaceUpdate?: (ws: any) => void }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const user = getUser();
-  const canReview = user?.role === 'super_admin' || user?.role === 'account_manager';
+  const canReview = user?.role === 'super_admin';
 
   useEffect(() => {
     const load = () => api.get(`/workspaces/${wsId}/payments`).then(({ data }) => {
@@ -46,7 +53,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
           <div>
             <span className="font-medium">{p.amount} ر.س</span>
             <span className="text-xs text-[var(--color-text-disabled)] mr-3">{methodLabels[p.method_type] || p.method_type}</span>
-            {p.proof_file_url && <a href={p.proof_file_url} target="_blank" className="text-xs text-blue-500 mr-2 hover:underline">📎 الإثبات</a>}
+            {p.proof_file_url && <a href={resolveFileUrl(p.proof_file_url)} target="_blank" className="text-xs text-blue-500 mr-2 hover:underline">📎 الإثبات</a>}
           </div>
           <div className="flex items-center gap-2">
             <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'approved' ? 'bg-green-900/30 text-green-400' : p.status === 'rejected' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'}`}>

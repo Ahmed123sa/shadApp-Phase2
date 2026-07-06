@@ -32,6 +32,6 @@ class PaymentPolicy
         if (!$user instanceof \App\Models\User) {
             return false;
         }
-        return $user->isSuperAdmin() || $payment->workspace->manager_id === $user->id;
+        return $user->isSuperAdmin();
     }
 }

@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Events\ContractCompanyApproved;
 
@@ -62,7 +63,8 @@ class PaymentController extends Controller
 
         $proofFileUrl = null;
         if ($request->hasFile('proof_file')) {
-            $proofFileUrl = $request->file('proof_file')->store('payment-proofs/workspace-' . $workspace->id, 'public');
+            $path = $request->file('proof_file')->store('payment-proofs/workspace-' . $workspace->id, 'public');
+            $proofFileUrl = Storage::url($path);
         }
 
         // Auto-link to the latest company_approved or completed contract
@@ -97,6 +99,31 @@ class PaymentController extends Controller
         ]);
 
         return response()->json(['payment' => $payment], 201);
+    }
+
+    public function update(Request $request, Workspace $workspace, Payment $payment): JsonResponse
+    {
+        if ($payment->status !== 'pending') {
+            return response()->json(['message' => 'لا يمكن تعديل دفع تمت مراجعته'], 422);
+        }
+
+        $request->validate([
+            'amount' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|string|size:3',
+            'method_type' => 'nullable|string',
+            'proof_file' => 'nullable|file|max:102400',
+        ]);
+
+        if ($request->has('amount')) $payment->amount = $request->amount;
+        if ($request->has('currency')) $payment->currency = $request->currency;
+        if ($request->has('method_type')) $payment->method_type = $request->method_type;
+        if ($request->hasFile('proof_file')) {
+            $path = $request->file('proof_file')->store('payment-proofs/workspace-' . $workspace->id, 'public');
+            $payment->proof_file_url = Storage::url($path);
+        }
+        $payment->save();
+
+        return response()->json(['payment' => $payment->fresh()]);
     }
 
     public function review(ReviewPaymentRequest $request, Payment $payment): JsonResponse

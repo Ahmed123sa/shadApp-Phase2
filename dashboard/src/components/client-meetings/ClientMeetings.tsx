@@ -13,7 +13,7 @@ export default function ClientMeetings({ wsId }: { wsId: number }) {
 
   useEffect(() => {
     api.get(`/workspaces/${wsId}/meetings`)
-      .then(({ data }) => setMeetings(data.meetings || []))
+      .then(({ data }) => setMeetings(data.meetings?.data || data.meetings || []))
       .catch(() => setError('فشل تحميل الاجتماعات'))
       .finally(() => setLoading(false));
   }, [wsId]);

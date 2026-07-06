@@ -21,7 +21,9 @@ export default function ClientContracts({ wsId, onGoToPayments }: { wsId: number
     api.get(`/workspaces/${wsId}/contracts`)
       .then(({ data }) => {
         const list = data.contracts?.data ?? data.contracts ?? [];
-        setContracts(Array.isArray(list) ? list : []);
+        const arr = Array.isArray(list) ? list : [];
+        setContracts(arr);
+        setViewContract((prev: any) => prev ? arr.find((c: any) => c.id === prev.id) || prev : prev);
       })
       .catch(() => setError('فشل تحميل العقود'))
       .finally(() => setLoading(false));

@@ -30,7 +30,7 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
   const load = () => {
     Promise.all([
       api.get(`/workspaces/${wsId}/chat`).then(({ data }) => setMessages(data.messages || [])),
-      api.get(`/workspaces/${wsId}/contracts`).then(({ data }) => setContracts(data.contracts || [])),
+      api.get(`/workspaces/${wsId}/contracts`).then(({ data }) => setContracts(data.contracts?.data || data.contracts || [])),
     ]).catch(() => {}).finally(() => setLoading(false));
   };
 
@@ -56,7 +56,10 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
       const { data } = await api.post(`/workspaces/${wsId}/chat`, form);
       if (data) { setMessages((prev) => [...prev, data.message]); setText(''); setUploadFile(null); if (fileRef.current) fileRef.current.value = ''; }
     } catch {
-      setSendError('فشل الإرسال');
+      setText('');
+      setUploadFile(null);
+      if (fileRef.current) fileRef.current.value = '';
+      load();
     }
   };
 
@@ -176,9 +179,9 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
                   {m.type === 'file' && m.file_url && (
                     <div className="mb-1">
                       {m.file_url.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) ? (
-                        <img src={m.file_url} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
+                        <img src={resolveFileUrl(m.file_url)} alt="مرفق" className="max-w-full rounded-lg max-h-40" />
                       ) : (
-                        <a href={m.file_url} target="_blank" rel="noopener noreferrer" className="text-[var(--color-gold)] underline text-xs">📎 عرض المرفق</a>
+                        <a href={resolveFileUrl(m.file_url)} target="_blank" rel="noopener noreferrer" className="text-[var(--color-gold)] underline text-xs">📎 عرض المرفق</a>
                       )}
                     </div>
                   )}
@@ -186,7 +189,7 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
                   {isPending && <p className="text-xs text-red-500 mt-1 font-medium">🏷️ طلب موافقة — قيد الانتظار</p>}
                   {isResponded && <p className={`text-xs mt-1 font-medium ${m.action_result === 'approved' ? 'text-emerald-600' : m.action_result === 'rejected' ? 'text-red-600' : 'text-amber-600'}`}>{actionResultLabel[m.action_result || '']}</p>}
                   {approval?.certificate?.pdf_url && (
-                    <a href={`/storage/${approval.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] underline block mt-1">📄 تحميل شهادة الموافقة</a>
+                    <a href={resolveFileUrl(approval.certificate.pdf_url)} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] underline block mt-1">📄 تحميل شهادة الموافقة</a>
                   )}
                 </div>
                 {isClient && (

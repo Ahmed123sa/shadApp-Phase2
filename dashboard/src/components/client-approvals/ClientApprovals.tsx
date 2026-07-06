@@ -14,7 +14,7 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
 
   useEffect(() => {
     api.get(`/workspaces/${wsId}/approvals`)
-      .then(({ data }) => setApprovals(data.approvals || []))
+      .then(({ data }) => setApprovals(data.approvals?.data || data.approvals || []))
       .catch((e) => { console.error(e); setError('فشل تحميل طلبات الموافقة'); })
       .finally(() => setLoading(false));
   }, [wsId]);
@@ -72,8 +72,8 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
           )}
 
           {a.certificate?.pdf_url && (
-            <div className="mt-2 text-xs text-[var(--color-gold)]">
-              📄 <a href={`/storage/${a.certificate.pdf_url}`} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
+              <div className="mt-1 text-xs text-[var(--color-gold)]">
+                📄 <a href={`${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${a.certificate.pdf_url.replace(/^\/?storage\//, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
             </div>
           )}
 
