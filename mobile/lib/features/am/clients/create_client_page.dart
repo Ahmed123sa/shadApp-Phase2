@@ -49,24 +49,26 @@ class _CreateClientPageState extends State<CreateClientPage> {
         if (!_autoPassword) 'password': _passwordController.text.trim(),
         'send_email': true,
       });
-      final creds = res['credentials'] as Map<String, dynamic>?;
+      final creds = (res['credentials'] is Map) ? res['credentials'] as Map<String, dynamic> : null;
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('تم إنشاء العميل'),
-            content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('بيانات الدخول:'),
-              const SizedBox(height: 8),
-              Text('البريد: ${creds?['email'] ?? ''}'),
-              const SizedBox(height: 4),
-              Text('كلمة المرور: ${creds?['password'] ?? ''}'),
-            ]),
-            actions: [
-              ElevatedButton(onPressed: () { Navigator.pop(ctx); context.pop(true); }, child: const Text('حسناً')),
-            ],
-          ),
-        );
+        try {
+          await showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('تم إنشاء العميل'),
+              content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('بيانات الدخول:'),
+                const SizedBox(height: 8),
+                Text('البريد: ${creds?['email'] ?? ''}'),
+                const SizedBox(height: 4),
+                Text('كلمة المرور: ${creds?['password'] ?? ''}'),
+              ]),
+              actions: [
+                ElevatedButton(onPressed: () { Navigator.pop(ctx); context.pop(true); }, child: const Text('حسناً')),
+              ],
+            ),
+          );
+        } catch (_) {}
       }
     } on ValidationException catch (e) {
       _errorMsg = e.message;

@@ -71,6 +71,14 @@ class _SubUsersPageState extends State<SubUsersPage> {
     }
   }
 
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name.isNotEmpty ? name[0].toUpperCase() : '?';
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -87,11 +95,11 @@ class _SubUsersPageState extends State<SubUsersPage> {
       padding: const EdgeInsets.all(16),
       children: [
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          const Text('المستخدمون التابعون', style: ShadTypography.sectionHeader),
+          Text('فريق العمل (${_subUsers.length})', style: ShadTypography.sectionHeader),
           TextButton.icon(
             onPressed: () => setState(() => _showForm = !_showForm),
             icon: Icon(_showForm ? Icons.close : Icons.person_add, size: 18),
-            label: Text(_showForm ? 'إلغاء' : 'مستخدم جديد'),
+            label: Text(_showForm ? 'إلغاء' : '+ إضافة'),
           ),
         ]),
         if (_showForm) ...[
@@ -119,7 +127,7 @@ class _SubUsersPageState extends State<SubUsersPage> {
                     onPressed: _saving ? null : _create,
                     child: _saving
                         ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('حفظ'),
+                        : const Text('إضافة المستخدم'),
                   ),
                 ),
               ]),
@@ -135,7 +143,7 @@ class _SubUsersPageState extends State<SubUsersPage> {
             child: ListTile(
               leading: CircleAvatar(
                 backgroundColor: ShadColors.black,
-                child: Text((u['name'] as String? ?? '?')[0].toUpperCase(),
+                child: Text(_initials(u['name'] as String? ?? '?'),
                     style: const TextStyle(color: ShadColors.gold, fontWeight: FontWeight.bold)),
               ),
               title: Text(u['name'] ?? '', style: ShadTypography.cardTitle),

@@ -38,6 +38,12 @@ class ShadColors {
   static const Color inputBorder = Color(0xFF3A3A3A);
   static const Color inputFocused = Color(0xFFD4AF37);
 
+  // Additions from redesign
+  static const Color surfaceLighter = Color(0xFF2A2A2A);
+  static const Color avatarBorder = Color(0xFF941414);
+  static const Color cardGoldBorder = Color(0xFFD4AF37);
+  static const Color online = Color(0xFF22C55E);
+
   // Legacy aliases for backward compatibility
   static const Color primary = Color(0xFF941414);
   static const Color primaryLight = Color(0xFFB71C1C);

@@ -99,64 +99,74 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (_loading) return const LoadingState();
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
-    return RefreshIndicator(
-      onRefresh: () async { await _load(); await _loadContractsForSuggest(); },
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: ShadColors.card,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: ShadColors.cardBorder),
-            ),
-            child: Column(children: [
-              Text('Total Paid', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-              const SizedBox(height: 8),
-              Text('${_totalPaid.toStringAsFixed(2)} ${_payments.isNotEmpty ? _currency(_payments.first) : 'SAR'}', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: _payments.isNotEmpty ? _totalPaid / _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0)) : 0,
-                  minHeight: 6,
-                  backgroundColor: ShadColors.cardBorder,
-                  valueColor: const AlwaysStoppedAnimation(ShadColors.gold),
-                ),
+    final grandTotal = _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+    final pendingCount = _payments.where((p) => p['status'] == 'pending').length;
+    final progress = grandTotal > 0 ? _totalPaid / grandTotal : 0.0;
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showRequestPaymentSheet,
+        backgroundColor: ShadColors.crimson,
+        child: const Icon(Icons.add, color: ShadColors.textOnCrimson),
+      ),
+      body: RefreshIndicator(
+        onRefresh: () async { await _load(); await _loadContractsForSuggest(); },
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: ShadColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
               ),
-            ]),
-          ),
-          const SizedBox(height: 16),
-
-          Row(children: [
-            Expanded(child: _quickAction(Icons.add_circle, 'Request Payment')),
-          ]),
-          const SizedBox(height: 20),
-
-          Row(children: [
-            _filterChip('All', 'all'),
-            const SizedBox(width: 8),
-            _filterChip('Approved', 'approved'),
-            const SizedBox(width: 8),
-            _filterChip('Pending', 'pending'),
-            const SizedBox(width: 8),
-            _filterChip('Rejected', 'rejected'),
-          ]),
-          const SizedBox(height: 12),
-
-          if (_filteredPayments.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
               child: Column(children: [
-                const Icon(Icons.payment_outlined, size: 48, color: ShadColors.textDisabled),
+                Text('Total Paid', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                const SizedBox(height: 8),
+                Text('${_totalPaid.toStringAsFixed(2)} ${_payments.isNotEmpty ? _currency(_payments.first) : 'SAR'}',
+                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                const SizedBox(height: 4),
+                Text('من أصل $grandTotal SAR — $pendingCount دفعات معلّقة',
+                  style: TextStyle(fontSize: 11, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
                 const SizedBox(height: 12),
-                Text('No payments yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: ShadColors.cardBorder,
+                    valueColor: const AlwaysStoppedAnimation(ShadColors.gold),
+                  ),
+                ),
               ]),
-            )
-          else
-            ..._filteredPayments.map((p) => _paymentCard(p)),
-        ],
+            ),
+            const SizedBox(height: 16),
+
+            Row(children: [
+              _filterChip('All', 'all'),
+              const SizedBox(width: 8),
+              _filterChip('Approved', 'approved'),
+              const SizedBox(width: 8),
+              _filterChip('Pending', 'pending'),
+              const SizedBox(width: 8),
+              _filterChip('Rejected', 'rejected'),
+            ]),
+            const SizedBox(height: 12),
+
+            if (_filteredPayments.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 48),
+                child: Column(children: [
+                  const Icon(Icons.payment_outlined, size: 48, color: ShadColors.textDisabled),
+                  const SizedBox(height: 12),
+                  Text('No payments yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                ]),
+              )
+            else
+              ..._filteredPayments.map((p) => _paymentCard(p)),
+          ],
+        ),
       ),
     );
   }
@@ -327,36 +337,17 @@ class _PaymentsPageState extends State<PaymentsPage> {
     );
   }
 
-  Widget _quickAction(IconData icon, String label) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(10),
-      onTap: label == 'Request Payment' ? _showRequestPaymentSheet : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: ShadColors.card,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: ShadColors.cardBorder),
-        ),
-        child: Column(children: [
-          Icon(icon, size: 24, color: ShadColors.gold),
-          const SizedBox(height: 4),
-          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-        ]),
-      ),
-    );
-  }
-
   Widget _paymentCard(dynamic p) {
     final statusColors = {'pending': ShadColors.gold, 'approved': ShadColors.success, 'rejected': ShadColors.error};
     final sc = statusColors[p['status']] ?? ShadColors.textDisabled;
+    final isPending = p['status'] == 'pending';
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: ShadColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ShadColors.cardBorder),
+        border: Border.all(color: isPending ? ShadColors.gold : ShadColors.cardBorder, width: isPending ? 1.5 : 1),
       ),
       child: Row(children: [
         Container(

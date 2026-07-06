@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'api_client.dart';
 
@@ -30,6 +31,9 @@ class ReverbService {
   }
 
   void _autoConfigureFromApi() {
+    host = dotenv.env['REVERB_HOST'] ?? host;
+    port = dotenv.env['REVERB_PORT'] ?? port;
+    key = dotenv.env['REVERB_KEY'] ?? key;
     final baseUrl = ApiClient().baseUrl;
     final uri = Uri.tryParse(baseUrl);
     if (uri != null && uri.host.isNotEmpty && uri.host != 'localhost') {

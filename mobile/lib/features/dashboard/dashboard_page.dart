@@ -29,6 +29,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
   int _selectedIndex = 0;
   final _api = ApiClient();
   int _unreadNotifs = 0;
+  int _unreadChat = 0;
   final ValueNotifier<int> _contractRefreshNotifier = ValueNotifier<int>(0);
 
   Map<String, dynamic>? _client;
@@ -59,12 +60,12 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
   }
 
   int _stageToTab(int stage) {
-    final map = {1: 0, 2: 0, 3: 0, 4: 1, 5: 1, 6: 3};
+    final map = {1: 0, 2: 0, 3: 0, 4: 3, 5: 3, 6: 3};
     return map[stage] ?? 0;
   }
 
   int _tabRequiredStage(int tab) {
-    const stages = [1, 4, 6, 6, 6, 6, 0, 6];
+    const stages = [1, 4, 4, 4, 6, 6, 0, 6];
     return stages[tab];
   }
 
@@ -182,6 +183,11 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     try {
       final data = await _api.get('/notifications');
       _unreadNotifs = (data['unread_count'] as num? ?? 0).toInt();
+    } catch (_) {}
+    try {
+      final data = await _api.get('/workspaces/${_api.workspaceIdSafe}/chat');
+      final messages = safeList(data['messages']);
+      _unreadChat = messages.where((m) => m['sender_type'] != 'App\\Models\\Client' && m['read_at'] == null).length;
     } catch (_) {}
     if (mounted) setState(() {});
   }
@@ -376,14 +382,14 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
       ContractsPage(onGoToPayments: _goToPayments, refreshNotifier: _contractRefreshNotifier),
       const PaymentsPage(),
       const ApprovalsPage(),
-      const ChatPage(),
+      ChatPage(onGoToPayments: _goToPayments),
       const ClientFilesPage(),
       const MeetingsPage(),
       const SignatureTab(),
       const SubUsersPage(),
     ];
 
-    final titles = ['العقود', 'المدفوعات', 'طلبات لاحقة', 'الشات', 'الملفات', 'الاجتماعات', 'التوقيع', 'المستخدمين'];
+    final titles = ['العقود', 'المدفوعات', 'طلبات لاحقة', 'الشات', 'الملفات', 'الاجتماعات', 'التوقيع', 'فريق العمل'];
 
     return Scaffold(
       appBar: AppBar(
@@ -458,8 +464,8 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
               label: 'طلبات لاحقة',
             ),
             NavigationDestination(
-              icon: _navIcon(_isTabLocked(3) ? Icons.lock_outline : Icons.chat_outlined, 3),
-              selectedIcon: _navIcon(Icons.chat_rounded, 3, selected: true),
+              icon: _navIcon(_isTabLocked(3) ? Icons.lock_outline : Icons.chat_outlined, 3, isChat: true),
+              selectedIcon: _navIcon(Icons.chat_rounded, 3, selected: true, isChat: true),
               label: 'الشات',
             ),
             NavigationDestination(
@@ -480,7 +486,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
             NavigationDestination(
               icon: _navIcon(_isTabLocked(7) ? Icons.lock_outline : Icons.people_outlined, 7),
               selectedIcon: _navIcon(Icons.people_rounded, 7, selected: true),
-              label: 'المستخدمين',
+              label: 'فريق العمل',
             ),
           ],
         ),
@@ -488,7 +494,8 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     );
   }
 
-  Widget _navIcon(IconData icon, int index, {bool selected = false}) {
+  Widget _navIcon(IconData icon, int index, {bool selected = false, bool isChat = false}) {
+    final isUnlocked = !_isTabLocked(index);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -502,7 +509,21 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(1)),
             ),
           ),
-        Icon(icon, size: 22),
+        Stack(children: [
+          Icon(icon, size: 22,
+            color: isChat && isUnlocked && _selectedIndex == 3
+              ? ShadColors.gold
+              : null),
+          if (isChat && _unreadChat > 0 && isUnlocked)
+            Positioned(
+              right: -6, top: -4,
+              child: Container(
+                padding: const EdgeInsets.all(3),
+                decoration: const BoxDecoration(color: ShadColors.gold, shape: BoxShape.circle),
+                child: Text('$_unreadChat', style: const TextStyle(fontSize: 7, color: Colors.black, fontWeight: FontWeight.bold)),
+              ),
+            ),
+        ]),
       ],
     );
   }
