@@ -355,8 +355,8 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
       final paymentsList = safeList(ws['payments']);
       final wsStatus = ws['status'] as String? ?? '';
       if (wsStatus == 'active') { currentStatus = 'completed'; }
-      else if (contractsList.any((c) => c is Map && c['status'] == 'completed')) { currentStatus = 'completed'; }
       else if (paymentsList.any((p) => p is Map && p['status'] == 'approved')) { currentStatus = 'payment_approved'; }
+      else if (contractsList.any((c) => c is Map && c['status'] == 'completed')) { currentStatus = 'payment_approved'; }
       else if (contractsList.any((c) => c is Map && c['status'] == 'company_approved')) { currentStatus = 'payment_approved'; }
       else if (contractsList.any((c) => c is Map && c['status'] == 'client_approved')) { currentStatus = 'company_approved'; }
       else if (contractsList.any((c) => c is Map && c['status'] == 'edit_requested')) { currentStatus = 'edit_requested'; }
