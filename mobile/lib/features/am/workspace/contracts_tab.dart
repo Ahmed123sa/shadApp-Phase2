@@ -224,7 +224,7 @@ class _ContractsTabState extends State<ContractsTab> {
       'draft': ['send'],
       'edit_requested': ['send'],
       if (isSA) 'client_approved': ['company-approve'],
-      if (isSA) 'company_approved': ['complete'],
+      if (isSA) 'company_approved': [],
       if (!isSA) 'company_approved': ['archive'],
     };
 

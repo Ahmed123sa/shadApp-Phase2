@@ -1,4 +1,5 @@
-﻿import 'dart:io';
+﻿import 'dart:io' show File;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -337,9 +338,10 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+      withData: kIsWeb,
     );
     if (result == null || result.files.isEmpty) return;
-    final file = File(result.files.single.path!);
+    final pf = result.files.single;
     final wsId = _api.workspaceId;
     if (wsId == null) return;
 
@@ -347,7 +349,11 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
     try {
       final fields = <String, dynamic>{'contract_id': contractId};
       if (definitionId != null) fields['contract_required_document_id'] = definitionId;
-      await _api.multipartPost('/workspaces/$wsId/files', fields, file: file);
+      if (kIsWeb) {
+        await _api.multipartPost('/workspaces/$wsId/files', fields, bytes: pf.bytes, filename: pf.name);
+      } else {
+        await _api.multipartPost('/workspaces/$wsId/files', fields, file: File(pf.path!));
+      }
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم رفع المستند')));
       widget.onRefresh();
     } catch (e) {

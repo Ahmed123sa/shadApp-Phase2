@@ -46,7 +46,7 @@ class _ChatContractCardState extends State<ChatContractCard> {
     final status = c['status'] as String? ?? '';
     final clauses = c['clauses'] as List<dynamic>? ?? [];
     final showApprove = widget.isClient && status == 'sent';
-    final showPayment = widget.isClient && status == 'company_approved';
+    final showPayment = widget.isClient && (status == 'company_approved' || status == 'completed');
     final isGoldBorder = status == 'company_approved';
 
     return Container(

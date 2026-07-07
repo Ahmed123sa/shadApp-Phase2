@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'dart:io';
+import 'dart:io' show File;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -59,32 +61,40 @@ class _PaymentsPageState extends State<PaymentsPage> {
         .fold<double>(0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
   }
 
+  double get _grandTotal {
+    if (_payments.isNotEmpty) {
+      return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+    }
+    final contract = _suggestedContract;
+    if (contract != null) {
+      return num.tryParse(contract['value']?.toString() ?? '')?.toDouble() ?? 0;
+    }
+    return 0;
+  }
+
   Future<void> _load() async {
     final wsId = _api.workspaceId;
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await _api.get('/workspaces/$wsId/payments');
-      _payments = safeList(data['payments']);
-      _availableMethods = (data['available_methods'] as List<dynamic>?)?.cast<String>() ?? [];
+      final results = await Future.wait<Map<String, dynamic>>([
+        _api.get('/workspaces/$wsId/payments'),
+        _api.get('/workspaces/$wsId/contracts'),
+      ]);
+      final paymentsData = results[0];
+      final contractsData = results[1];
+      _payments = safeList(paymentsData['payments']);
+      _availableMethods = (paymentsData['available_methods'] as List<dynamic>?)?.cast<String>() ?? [];
+      _contracts = safeList(contractsData['contracts']);
     } catch (_) {
       _error = 'فشل تحميل المدفوعات';
     }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _loadContractsForSuggest() async {
-    final wsId = _api.workspaceId;
-    if (wsId == null) return;
-    try {
-      final data = await _api.get('/workspaces/$wsId/contracts');
-      _contracts = safeList(data['contracts']);
-    } catch (_) {}
-  }
-
   Map<String, dynamic>? get _suggestedContract {
     return _contracts.cast<Map<String, dynamic>?>().firstWhere(
-      (c) => c?['status'] == 'company_approved',
+      (c) => c?['status'] == 'company_approved' || c?['status'] == 'completed',
       orElse: () => null,
     );
   }
@@ -99,7 +109,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (_loading) return const LoadingState();
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
-    final grandTotal = _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+    final grandTotal = _grandTotal;
     final pendingCount = _payments.where((p) => p['status'] == 'pending').length;
     final progress = grandTotal > 0 ? _totalPaid / grandTotal : 0.0;
 
@@ -110,7 +120,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
         child: const Icon(Icons.add, color: ShadColors.textOnCrimson),
       ),
       body: RefreshIndicator(
-        onRefresh: () async { await _load(); await _loadContractsForSuggest(); },
+        onRefresh: _load,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           children: [
@@ -202,16 +212,16 @@ class _PaymentsPageState extends State<PaymentsPage> {
     final selectedMethod = ValueNotifier<String>(available.first);
     final selectedCurrency = ValueNotifier<String>('SAR');
     File? selectedFile;
+    Uint8List? selectedBytes;
+    String? selectedFileName;
     bool uploading = false;
 
     final methods = <String, String>{
       for (final k in available) k: methodLabels[k] ?? k,
     };
 
-    // Auto-suggest: find first company_approved contract
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _loadContractsForSuggest();
-      if (!mounted) return;
+    // Auto-suggest contract value
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       final suggested = _suggestedContract;
       if (suggested != null && _payments.where((p) => p['status'] == 'pending').isEmpty) {
         amountCtrl.text = suggested['value'].toString();
@@ -268,13 +278,21 @@ class _PaymentsPageState extends State<PaymentsPage> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () async {
-                    final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: false);
+                    final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
                     if (r != null && r.files.isNotEmpty) {
-                      setSheetState(() => selectedFile = File(r.files.first.path!));
+                      setSheetState(() {
+                        final f = r.files.first;
+                        if (kIsWeb) {
+                          selectedBytes = f.bytes;
+                          selectedFileName = f.name;
+                        } else {
+                          selectedFile = File(f.path!);
+                        }
+                      });
                     }
                   },
                   icon: const Icon(Icons.upload_file, size: 18),
-                  label: Text(selectedFile != null ? 'تم اختيار الملف' : 'إرفاق إثبات الدفع'),
+                  label: Text(selectedFile != null || selectedBytes != null ? 'تم اختيار الملف' : 'إرفاق إثبات الدفع'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -282,7 +300,18 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 onPressed: () async {
                   final r = await ImagePicker().pickImage(source: ImageSource.camera);
                   if (r != null) {
-                    setSheetState(() => selectedFile = File(r.path));
+                    setSheetState(() {
+                      if (kIsWeb) {
+                        r.readAsBytes().then((bytes) {
+                          setSheetState(() {
+                            selectedBytes = bytes;
+                            selectedFileName = r.name;
+                          });
+                        });
+                      } else {
+                        selectedFile = File(r.path);
+                      }
+                    });
                   }
                 },
                 style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
@@ -311,7 +340,9 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   setSheetState(() => uploading = true);
                   try {
                     final fields = <String, dynamic>{'amount': amount, 'currency': selectedCurrency.value, 'method_type': selectedMethod.value};
-                    if (selectedFile != null) {
+                    if (selectedBytes != null) {
+                      await _api.multipartPost('/workspaces/$wsId/payments', fields, bytes: selectedBytes, filename: selectedFileName, fileField: 'proof_file');
+                    } else if (selectedFile != null) {
                       await _api.multipartPost('/workspaces/$wsId/payments', fields, file: selectedFile, fileField: 'proof_file');
                     } else {
                       await _api.post('/workspaces/$wsId/payments', fields);

@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiClient {
   String baseUrl = dotenv.env['API_BASE_URL'] ?? 'http://localhost:8000/api';
@@ -91,7 +93,9 @@ class ApiClient {
   String resolveFileUrl(String url) {
     if (url.startsWith('http://') || url.startsWith('https://')) return url;
     final base = baseUrl.replaceFirst('/api', '');
-    final cleaned = url.startsWith('/') ? url.substring(1) : url;
+    String cleaned = url;
+    if (cleaned.startsWith('/')) cleaned = cleaned.substring(1);
+    if (cleaned.startsWith('storage/')) return '$base/$cleaned';
     return '$base/storage/$cleaned';
   }
 
@@ -148,11 +152,18 @@ class ApiClient {
     return _handle(response);
   }
 
-  Future<Map<String, dynamic>> multipartPost(String path, Map<String, dynamic> fields, {File? file, String fileField = 'file'}) async {
+  Future<Map<String, dynamic>> multipartPost(String path, Map<String, dynamic> fields, {File? file, Uint8List? bytes, String? filename, String fileField = 'file'}) async {
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
     request.headers.addAll(await _headers(multipart: true));
     fields.forEach((key, value) => request.fields[key] = value.toString());
-    if (file != null) request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+    if (bytes != null) {
+      request.files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: filename));
+    } else if (file != null) {
+      if (kIsWeb) {
+        throw UnsupportedError('Use bytes parameter instead of File on web');
+      }
+      request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
+    }
     final streamed = await request.send().timeout(_timeout);
     final response = await http.Response.fromStream(streamed);
     return _handle(response);
@@ -163,6 +174,9 @@ class ApiClient {
     request.headers.addAll(await _headers(multipart: true));
     fields.forEach((key, value) => request.fields[key] = value.toString());
     for (final file in files) {
+      if (kIsWeb) {
+        throw UnsupportedError('multipartPostMultiple does not support web yet');
+      }
       request.files.add(await http.MultipartFile.fromPath(fileField, file.path));
     }
     final streamed = await request.send().timeout(_timeout);
