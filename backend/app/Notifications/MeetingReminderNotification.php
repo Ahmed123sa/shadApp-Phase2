@@ -4,9 +4,10 @@ namespace App\Notifications;
 
 use App\Models\Meeting;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class MeetingReminderNotification extends Notification
+class MeetingReminderNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 

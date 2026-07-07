@@ -13,11 +13,11 @@ class FcmChannel
     {
         $data = $notification->toFcm($notifiable);
 
-        $tokens = MobileNotificationToken::where('tokenable_id', $notifiable->id)
+        $deviceTokens = MobileNotificationToken::where('tokenable_id', $notifiable->id)
             ->where('tokenable_type', get_class($notifiable))
-            ->pluck('token');
+            ->get();
 
-        if ($tokens->isEmpty()) {
+        if ($deviceTokens->isEmpty()) {
             return;
         }
 
@@ -30,9 +30,13 @@ class FcmChannel
 
         $customData = $data['data'] ?? [];
 
-        foreach ($tokens as $token) {
+        foreach ($deviceTokens as $deviceToken) {
             try {
-                $firebase->sendMessage($token, $notifData, $customData);
+                $result = $firebase->sendMessage($deviceToken->token, $notifData, $customData);
+                if ($result === 'unregistered') {
+                    $deviceToken->delete();
+                    Log::info('Removed unregistered FCM token for tokenable_id ' . $notifiable->id);
+                }
             } catch (\Exception $e) {
                 Log::warning('FCM send failed: ' . $e->getMessage());
             }

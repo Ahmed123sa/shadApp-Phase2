@@ -4,9 +4,10 @@ namespace App\Notifications;
 
 use App\Models\Contract;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class ContractReminderNotification extends Notification
+class ContractReminderNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
