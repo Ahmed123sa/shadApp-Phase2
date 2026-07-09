@@ -22,10 +22,19 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
+          --health-cmd "pg_isready -U shadapp"
+          --health-interval 5s
           --health-timeout 5s
-          --health-retries 5
+          --health-retries 10
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
 
     defaults:
       run:
@@ -56,7 +65,13 @@ jobs:
         run: composer install --no-progress --no-interaction --prefer-dist
 
       - name: Prepare environment
-        run: cp .env.example .env && php artisan key:generate
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+          php artisan config:clear
+          mkdir -p storage/app/firebase
+          echo '{}' > storage/app/firebase/service-account.json
+          chmod -R 777 storage bootstrap/cache
 
       - name: Run migrations
         run: php artisan migrate --force
@@ -67,6 +82,9 @@ jobs:
           DB_DATABASE: shadapp_test
           DB_USERNAME: shadapp
           DB_PASSWORD: secret
+          QUEUE_CONNECTION: sync
+          CACHE_STORE: array
+          SESSION_DRIVER: array
 
       - name: Run tests
         run: php vendor/bin/phpunit
@@ -77,3 +95,6 @@ jobs:
           DB_DATABASE: shadapp_test
           DB_USERNAME: shadapp
           DB_PASSWORD: secret
+          QUEUE_CONNECTION: sync
+          CACHE_STORE: array
+          SESSION_DRIVER: array
