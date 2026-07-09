@@ -3,14 +3,9 @@
 namespace App\Notifications;
 
 use App\Models\Payment;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 
-class PaymentReviewedNotification extends Notification implements ShouldQueue
+class PaymentReviewedNotification extends BaseNotification
 {
-    use Queueable;
-
     public Payment $payment;
     public string $action;
     public bool $workspaceActivated;
@@ -20,11 +15,6 @@ class PaymentReviewedNotification extends Notification implements ShouldQueue
         $this->payment = $payment;
         $this->action = $action;
         $this->workspaceActivated = $workspaceActivated;
-    }
-
-    public function via($notifiable): array
-    {
-        return ['database', 'broadcast', FcmChannel::class];
     }
 
     public function toDatabase($notifiable): array

@@ -3,24 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Meeting;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 
-class MeetingReminderNotification extends Notification implements ShouldQueue
+class MeetingReminderNotification extends BaseNotification
 {
-    use Queueable;
-
     public Meeting $meeting;
 
     public function __construct(Meeting $meeting)
     {
         $this->meeting = $meeting;
-    }
-
-    public function via($notifiable): array
-    {
-        return ['database', 'broadcast', FcmChannel::class];
     }
 
     public function toDatabase($notifiable): array

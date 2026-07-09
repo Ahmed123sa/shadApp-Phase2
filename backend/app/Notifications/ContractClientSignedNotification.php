@@ -3,24 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Contract;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 
-class ContractClientSignedNotification extends Notification implements ShouldQueue
+class ContractClientSignedNotification extends BaseNotification
 {
-    use Queueable;
-
     public Contract $contract;
 
     public function __construct(Contract $contract)
     {
         $this->contract = $contract;
-    }
-
-    public function via($notifiable): array
-    {
-        return ['database', 'broadcast', FcmChannel::class];
     }
 
     public function toDatabase($notifiable): array

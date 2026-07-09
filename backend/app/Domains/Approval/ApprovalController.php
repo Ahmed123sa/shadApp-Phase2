@@ -14,6 +14,7 @@ use App\Notifications\ApprovalRequestedNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 use App\Services\ApprovalPdfService;
@@ -52,7 +53,7 @@ class ApprovalController extends Controller
                     'workspace_id' => $workspace->id,
                     'uploaded_by_type' => get_class($request->user()),
                     'uploaded_by_id' => $request->user()->id,
-                    'file_url' => $path,
+                    'file_url' => Storage::url($path),
                     'name' => $file->getClientOriginalName(),
                     'type' => $file->getMimeType(),
                     'size' => $file->getSize(),

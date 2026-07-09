@@ -6,6 +6,13 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 
+const CLIENT_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+function resolveFileUrl(url: string): string {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${CLIENT_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+}
+
 export default function ClientApprovals({ wsId, clientId }: { wsId: number; clientId: number }) {
   const [approvals, setApprovals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +70,7 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
           {a.files && a.files.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1">
               {a.files.map((f: any) => (
-                <a key={f.id} href={`/storage/${f.file_url}`} target="_blank" rel="noopener noreferrer"
+                <a key={f.id} href={resolveFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-[var(--color-gold)] underline bg-blue-900/30 px-2 py-0.5 rounded">
                   📎 {f.name || 'ملف'}
                 </a>
@@ -73,7 +80,7 @@ export default function ClientApprovals({ wsId, clientId }: { wsId: number; clie
 
           {a.certificate?.pdf_url && (
               <div className="mt-1 text-xs text-[var(--color-gold)]">
-                📄 <a href={`${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${a.certificate.pdf_url.replace(/^\/?storage\//, '')}`} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
+                📄 <a href={resolveFileUrl(a.certificate.pdf_url)} target="_blank" rel="noopener noreferrer" className="hover:underline">شهادة الموافقة</a>
             </div>
           )}
 

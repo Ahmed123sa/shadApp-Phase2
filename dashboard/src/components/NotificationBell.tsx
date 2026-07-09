@@ -4,17 +4,34 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { subscribeToNotifications, disconnectEcho } from '@/lib/echo';
+import { showToast } from './ToastNotification';
 
 export default function NotificationBell() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unread, setUnread] = useState(0);
+  const lastIdRef = useRef<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
 
   const load = () => {
     api.get('/notifications').then(({ data }) => {
-      setNotifications(data.notifications || []);
+      const items = data.notifications || [];
+      // Show toast for the newest notification if it arrived via WebSocket
+      if (items.length > 0) {
+        const newest = items[0];
+        if (newest.id !== lastIdRef.current && !newest.read_at) {
+          const href = getHref(newest);
+          showToast({
+            id: newest.id,
+            title: newest.data?.title || '',
+            message: newest.data?.message || '',
+            href,
+          });
+        }
+        lastIdRef.current = items[0]?.id || null;
+      }
+      setNotifications(items);
       setUnread(data.unread_count || 0);
     }).catch(() => {});
   };
@@ -32,16 +49,28 @@ export default function NotificationBell() {
     api.post(`/notifications/${id}/read`).then(() => { load(); }).catch(() => {});
   };
 
+  const notificationTab: Record<string, string> = {
+    chat: 'المحادثة',
+    contract_sent: 'العقود',
+    contract_client_approved: 'العقود',
+    contract_client_signed: 'العقود',
+    contract_company_approved: 'العقود',
+    contract_completed: 'العقود',
+    contract_reminder: 'العقود',
+    payment_created: 'المدفوعات',
+    payment_reviewed: 'المدفوعات',
+    workspace_activated: 'المدفوعات',
+    approval_requested: 'الموافقات',
+    approval_responded: 'الموافقات',
+    meeting_reminder: 'الاجتماعات',
+  };
+
   const getHref = (n: any) => {
     const d = n.data;
     const clientId = d?.client_id || d?.workspace_id;
-    if (d?.type === 'chat') return clientId ? `/dashboard/clients/${clientId}` : '#';
-    if (d?.payment_id) return clientId ? `/dashboard/clients/${clientId}` : '#';
-    if (d?.approval_id) return clientId ? `/dashboard/clients/${clientId}` : '#';
-    if (d?.contract_id) return `/dashboard/clients/${clientId}`;
-    if (d?.meeting_id && clientId) return `/dashboard/clients/${clientId}`;
-    if (d?.workspace_id) return `/dashboard/clients/${d.workspace_id}`;
-    return '#';
+    if (!clientId) return '#';
+    const tab = notificationTab[d?.type] || '';
+    return tab ? `/dashboard/clients/${clientId}?tab=${encodeURIComponent(tab)}` : `/dashboard/clients/${clientId}`;
   };
 
   return (

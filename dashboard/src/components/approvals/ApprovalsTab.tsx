@@ -105,7 +105,7 @@ export default function ApprovalsTab({ wsId }: { wsId: number }) {
             {a.files && a.files.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1">
                 {a.files.map((f: any) => (
-                  <a key={f.id} href={`/storage/${f.file_url}`} target="_blank" rel="noopener noreferrer"
+                  <a key={f.id} href={resolveFileUrl(f.file_url)} target="_blank" rel="noopener noreferrer"
                     className="text-xs text-[var(--color-gold)] underline bg-blue-900/30 px-2 py-0.5 rounded">
                     📎 {f.name || 'ملف'}
                   </a>

@@ -28,7 +28,10 @@ GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
       GoRoute(path: '/am/clients/create', builder: (_, __) => const CreateClientPage()),
       GoRoute(path: '/am/clients/:id', builder: (_, state) => ClientDetailPage(clientId: int.parse(state.pathParameters['id']!))),
       GoRoute(path: '/am/managers', builder: (_, __) => const AccountManagersPage()),
-      GoRoute(path: '/am/workspace/:id', builder: (_, state) => const AmWorkspacePage()),
+      GoRoute(path: '/am/workspace/:id', builder: (_, state) {
+        final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '');
+        return AmWorkspacePage(initialTabIndex: tab ?? 0);
+      }),
       GoRoute(path: '/am/reports', builder: (_, __) => const ReportsPage()),
       GoRoute(path: '/am/audit-logs', builder: (_, __) => const AuditLogPage()),
       GoRoute(path: '/am/settings', builder: (_, __) => const AdminSettingsPage()),

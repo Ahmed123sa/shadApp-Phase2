@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import type { Client } from '@/types';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -32,8 +32,16 @@ type Tab = (typeof TABS)[number];
 export default function ClientWorkspace() {
   const { id } = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [client, setClient] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('المحادثة');
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && (TABS as readonly string[]).includes(t)) {
+      setActiveTab(t as Tab);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);

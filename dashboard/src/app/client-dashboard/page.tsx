@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { isClientAuthenticated, getClient, clientLogout } from '@/lib/client-auth';
 import api from '@/lib/api';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -23,10 +23,18 @@ type Tab = (typeof TABS)[number];
 
 export default function ClientDashboardPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
   const [client, setClient] = useState<any>(null);
   const [workspace, setWorkspace] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<Tab>('العقود');
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && (TABS as readonly string[]).includes(t)) {
+      setActiveTab(t as Tab);
+    }
+  }, [searchParams]);
   const [loading, setLoading] = useState(true);
   const [fetchKey, setFetchKey] = useState(0);
   const session = getClient();

@@ -3,24 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Approval;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 
-class ApprovalRespondedNotification extends Notification implements ShouldQueue
+class ApprovalRespondedNotification extends BaseNotification
 {
-    use Queueable;
-
     public Approval $approval;
 
     public function __construct(Approval $approval)
     {
         $this->approval = $approval;
-    }
-
-    public function via($notifiable): array
-    {
-        return ['database', 'broadcast', FcmChannel::class];
     }
 
     public function toDatabase($notifiable): array

@@ -6,6 +6,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { isAuthenticated, getUser, logout } from '@/lib/auth';
 import { setLocaleCookie } from '@/lib/locale';
 import NotificationBell from '@/components/NotificationBell';
+import ToastNotification from '@/components/ToastNotification';
 import Link from 'next/link';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen">
+      <ToastNotification />
       <aside className={`fixed inset-y-0 right-0 z-50 w-64 bg-[var(--color-sidebar)] text-white transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div className="p-5 border-b border-white/20">
           <h2 className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{t('sidebar_title')}</h2>

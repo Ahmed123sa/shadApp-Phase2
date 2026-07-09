@@ -77,9 +77,18 @@ void main() async {
   );
 }
 
+int _fcmTabIndex(String? type) {
+  if (type == null || type == 'chat') return 0;
+  if (type.startsWith('contract')) return 2;
+  if (type.startsWith('payment')) return 3;
+  if (type.startsWith('approval')) return 4;
+  if (type.startsWith('meeting')) return 5;
+  return 0;
+}
+
 Future<void> _navigateFromNotification(Map<String, String> data, GoRouter router) async {
   final workspaceId = data['workspace_id'];
-
+  final type = data['type'];
   final role = await ApiClient().getRole();
 
   if (role == 'client') {
@@ -88,7 +97,7 @@ Future<void> _navigateFromNotification(Map<String, String> data, GoRouter router
   }
 
   if (workspaceId != null) {
-    router.go('/am/workspace/$workspaceId');
+    router.go('/am/workspace/$workspaceId?tab=${_fcmTabIndex(type)}');
   } else {
     router.go('/am/dashboard');
   }

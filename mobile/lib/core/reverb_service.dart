@@ -12,6 +12,7 @@ class ReverbService {
   String host = 'localhost';
   String port = '8080';
   String key = 'shadapp-key';
+  String scheme = 'ws';
 
   WebSocketChannel? _channel;
   Timer? _pingTimer;
@@ -34,6 +35,7 @@ class ReverbService {
     host = dotenv.env['REVERB_HOST'] ?? host;
     port = dotenv.env['REVERB_PORT'] ?? port;
     key = dotenv.env['REVERB_KEY'] ?? key;
+    scheme = dotenv.env['REVERB_SCHEME'] ?? scheme;
     final baseUrl = ApiClient().baseUrl;
     final uri = Uri.tryParse(baseUrl);
     if (uri != null && uri.host.isNotEmpty && uri.host != 'localhost') {
@@ -69,7 +71,7 @@ class ReverbService {
     await _disconnect();
     _autoConfigureFromApi();
 
-    final url = 'ws://$host:$port/app/$key?protocol=7&client=flutter&version=7.6.2';
+    final url = '$scheme://$host:$port/app/$key?protocol=7&client=flutter&version=7.6.2';
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(url));

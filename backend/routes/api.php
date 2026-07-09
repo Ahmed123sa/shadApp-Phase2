@@ -15,11 +15,10 @@ use App\Domains\Audit\AuditController;
 use App\Domains\Notification\NotificationController;
 use App\Domains\SubUser\SubUserController;
 use Illuminate\Support\Facades\Route;
-
 // Public auth routes
-Route::post('/auth/register', [AuthController::class, 'registerSuperAdmin']);
-Route::post('/auth/login', [AuthController::class, 'login']);
-Route::post('/auth/client/login', [AuthController::class, 'clientLogin']);
+Route::post('/auth/register', [AuthController::class, 'registerSuperAdmin'])->middleware('throttle:5,1');
+Route::post('/auth/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+Route::post('/auth/client/login', [AuthController::class, 'clientLogin'])->middleware('throttle:5,1');
 
 // Dual-auth routes — allows both admin (sanctum) and client (client) guard
 Route::middleware('auth.any:sanctum,client')->group(function () {

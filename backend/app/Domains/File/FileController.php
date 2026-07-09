@@ -24,7 +24,7 @@ class FileController extends Controller
     public function upload(Request $request, Workspace $workspace): JsonResponse
     {
         $request->validate([
-            'file' => 'required|file|max:102400',
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx,zip|max:102400',
             'name' => 'nullable|string|max:255',
             'document_definition_id' => 'nullable|exists:document_definitions,id',
             'contract_id' => 'nullable|exists:contracts,id',

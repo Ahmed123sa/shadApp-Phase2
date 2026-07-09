@@ -18,12 +18,24 @@ function getLocale(request: NextRequest): string {
   return defaultLocale;
 }
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Proxy /storage/* to the Laravel backend
+  // Proxy /storage/* by fetching the file from Laravel and passing it through
   if (pathname.startsWith('/storage/')) {
-    return NextResponse.redirect(new URL(pathname, API_URL));
+    const url = new URL('/api' + pathname, API_URL);
+    const upstream = await fetch(url.toString());
+    const headers = new Headers();
+    const passHeaders = ['content-type', 'content-length', 'cache-control', 'etag', 'last-modified'];
+    for (const key of passHeaders) {
+      const value = upstream.headers.get(key);
+      if (value) headers.set(key, value);
+    }
+    return new NextResponse(upstream.body, {
+      status: upstream.status,
+      statusText: upstream.statusText,
+      headers,
+    });
   }
 
   const locale = getLocale(request);

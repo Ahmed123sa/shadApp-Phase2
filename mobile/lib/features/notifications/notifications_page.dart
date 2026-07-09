@@ -55,8 +55,22 @@ class _NotificationsPageState extends State<NotificationsPage> {
     if (route != null) context.push(route);
   }
 
+  int _tabIndexForType(String? type) {
+    if (type == null || type == 'chat') return 0;
+    if (type.startsWith('contract') || type.startsWith('workspace')) return 2;
+    if (type.startsWith('payment')) return 3;
+    if (type.startsWith('approval')) return 4;
+    if (type.startsWith('meeting')) return 5;
+    return 0;
+  }
+
   String? _resolveRoute(String? role, Map<String, dynamic> data, dynamic clientId) {
     final isAdmin = role == 'account_manager' || role == 'super_admin';
+    final workspaceId = data['workspace_id'];
+    final type = data['type'] as String?;
+    if (isAdmin && workspaceId != null && workspaceId.toString().isNotEmpty) {
+      return '/am/workspace/$workspaceId?tab=${_tabIndexForType(type)}';
+    }
     if (clientId != null && clientId.toString().isNotEmpty) {
       if (isAdmin) return '/am/clients/$clientId';
       return '/dashboard';

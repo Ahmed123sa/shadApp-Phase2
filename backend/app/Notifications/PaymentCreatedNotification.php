@@ -3,24 +3,14 @@
 namespace App\Notifications;
 
 use App\Models\Payment;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
 
-class PaymentCreatedNotification extends Notification implements ShouldQueue
+class PaymentCreatedNotification extends BaseNotification
 {
-    use Queueable;
-
     public Payment $payment;
 
     public function __construct(Payment $payment)
     {
         $this->payment = $payment;
-    }
-
-    public function via($notifiable): array
-    {
-        return ['database', 'broadcast', FcmChannel::class];
     }
 
     public function toDatabase($notifiable): array
