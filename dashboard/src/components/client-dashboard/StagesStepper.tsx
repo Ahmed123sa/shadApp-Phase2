@@ -35,32 +35,26 @@ export default function StagesStepper({ client, workspace, onStageClick }: { cli
 
   return (
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-4">
-      <div className="flex items-center justify-between gap-1 overflow-x-auto">
+      <div className="flex items-center gap-0">
         {STAGES.map((stage, i) => {
           const done = i < current;
           const active = i === current;
           return (
-              <div key={stage.key} className="flex items-center gap-1 flex-1 min-w-0">
-                <button onClick={() => onStageClick?.(STAGE_TO_TAB[i] || 'العقود')}
-                  className={`flex flex-col items-center gap-1 min-w-0 cursor-pointer ${active ? 'opacity-100' : done ? 'opacity-100' : 'opacity-40'} hover:opacity-80 transition-opacity`}>
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm transition-colors ${
-                    done ? 'bg-[var(--color-primary)] text-white' :
-                    active ? 'border border-[var(--color-gold)] text-[var(--color-gold)]' :
-                    'bg-[var(--color-text-disabled)] text-white'
-                  }`}>
-                    {done ? '✓' : stage.icon}
-                  </div>
-                  <span className={`text-[10px] whitespace-nowrap text-center ${
-                    done ? 'text-[var(--color-primary)] font-medium' :
-                    active ? 'text-[var(--color-gold)] font-medium' :
-                    'text-[var(--color-text-disabled)]'
-                  }`}>
-                    {stage.label}
-                  </span>
-                </button>
-              {i < STAGES.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-1 rounded ${i < current ? 'bg-[var(--color-primary)]' : 'bg-[var(--color-card-border)]'}`} />
-              )}
+            <div key={stage.key} className="flex-1 flex flex-col items-center gap-1">
+              <button onClick={() => onStageClick?.(STAGE_TO_TAB[i] || 'العقود')}
+                className={`w-full h-1.5 rounded-full transition-colors cursor-pointer ${
+                  done ? 'bg-[var(--color-primary)]' :
+                  active ? 'bg-[var(--color-gold)]' :
+                  'bg-[var(--color-card-border)]'
+                }`} />
+              <button onClick={() => onStageClick?.(STAGE_TO_TAB[i] || 'العقود')}
+                className={`text-[10px] whitespace-nowrap text-center transition-colors cursor-pointer ${
+                  done ? 'text-[var(--color-primary)] font-medium' :
+                  active ? 'text-[var(--color-gold)] font-medium' :
+                  'text-[var(--color-text-disabled)]'
+                }`}>
+                {stage.label}
+              </button>
             </div>
           );
         })}

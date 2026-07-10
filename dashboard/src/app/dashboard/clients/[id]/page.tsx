@@ -68,7 +68,7 @@ export default function ClientWorkspace() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
+      <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5 border-r-2 border-r-[var(--color-primary)]">
         {editing ? (
           <div className="space-y-2">
             <div className="flex gap-2 flex-wrap">
@@ -77,8 +77,8 @@ export default function ClientWorkspace() {
               <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="الهاتف" />
               <input value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="البلد" />
               <input value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="المجال" />
-              <button onClick={saveEdit} className="bg-[var(--color-primary)] text-white px-3 py-1 rounded text-xs">حفظ</button>
-              <button onClick={() => setEditing(false)} className="bg-[var(--color-input-fill)] px-3 py-1 rounded text-xs">إلغاء</button>
+              <button onClick={saveEdit} className="bg-[var(--color-primary)] text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-[var(--color-primary-dark)]">حفظ</button>
+              <button onClick={() => setEditing(false)} className="bg-[var(--color-input-fill)] hover:bg-[var(--color-card-border)] px-3 py-1.5 rounded-lg text-xs transition-colors">إلغاء</button>
             </div>
           </div>
         ) : (
@@ -100,7 +100,7 @@ export default function ClientWorkspace() {
             </div>
             <div className="flex items-center gap-2">
               {!isSA && <button onClick={() => router.push(`/dashboard/clients/${id}/settings`)} className="text-xs bg-[var(--color-input-fill)] hover:bg-[var(--color-card-border)] px-3 py-1.5 rounded-lg transition-colors">⚙️</button>}
-              {!isSA && <button onClick={() => setEditing(true)} className="text-xs text-[var(--color-gold)] hover:underline">تعديل</button>}
+              {!isSA && <button onClick={() => setEditing(true)} className="text-xs text-[var(--color-primary)] hover:underline font-medium">تعديل</button>}
               {!isSA && <button onClick={() => setDeleteConfirm(true)} className="text-xs text-red-400 hover:underline">حذف</button>}
               <StatusBadge status={client.workspace?.status === 'active' ? 'active' : 'inactive'} />
               <span className={`px-2.5 py-1 rounded-full text-xs ${client.signed_at ? 'bg-purple-900/30 text-purple-400' : 'bg-[var(--color-input-fill)] text-[var(--color-text-secondary)]'}`}>

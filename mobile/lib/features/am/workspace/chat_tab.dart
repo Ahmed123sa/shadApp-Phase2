@@ -168,12 +168,12 @@ class _ChatTabState extends State<ChatTab> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isClient ? ShadColors.primaryLight : ShadColors.secondary,
+        color: isClient ? ShadColors.primary : ShadColors.card,
         borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(16),
-          topRight: const Radius.circular(16),
-          bottomLeft: Radius.circular(isClient ? 4 : 16),
-          bottomRight: Radius.circular(isClient ? 16 : 4),
+          topLeft: const Radius.circular(12),
+          topRight: const Radius.circular(12),
+          bottomLeft: Radius.circular(isClient ? 3 : 12),
+          bottomRight: Radius.circular(isClient ? 12 : 3),
         ),
       ),
       child: Column(
@@ -185,16 +185,23 @@ class _ChatTabState extends State<ChatTab> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  CircleAvatar(
-                    radius: 12,
-                    backgroundColor: ShadColors.cardBorder,
-                    backgroundImage: senderAvatarUrl != null
-                        ? NetworkImage(_api.resolveFileUrl(senderAvatarUrl))
-                        : null,
-                    child: senderAvatarUrl == null
-                        ? Text(senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: ShadColors.textPrimary))
-                        : null,
+                  Container(
+                    width: 24, height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: ShadColors.avatarBorder, width: 1.5),
+                    ),
+                    child: CircleAvatar(
+                      radius: 11.25,
+                      backgroundColor: ShadColors.cardBorder,
+                      backgroundImage: senderAvatarUrl != null
+                          ? NetworkImage(_api.resolveFileUrl(senderAvatarUrl))
+                          : null,
+                      child: senderAvatarUrl == null
+                          ? Text(senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ShadColors.gold))
+                          : null,
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Text(senderName, style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary)),
@@ -408,7 +415,7 @@ class _ChatTabState extends State<ChatTab> {
                     decoration: InputDecoration(
                       hintText: AppLocalizations.of(context)!.typeMessage,
                       filled: true,
-                      fillColor: ShadColors.background,
+                      fillColor: ShadColors.inputFill,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
                     ),

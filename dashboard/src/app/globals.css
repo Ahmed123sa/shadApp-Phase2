@@ -1,15 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #1A1A1A;
+  --color-background: #1C1C1C;
   --color-foreground: #F0F0F0;
   --color-primary: #941414;
   --color-primary-dark: #6B0E0E;
   --color-primary-light: #B71C1C;
   --color-gold: #D4AF37;
-  --color-sidebar: #941414;
-  --color-sidebar-hover: #B71C1C;
+  --color-sidebar: #0D0D0D;
+  --color-sidebar-hover: #1A1A1A;
   --color-card: #222222;
   --color-card-border: #2A2A2A;
   --color-text-secondary: #A0A0A0;
@@ -27,7 +27,7 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: 'Noto Sans Arabic', system-ui, sans-serif;
+  font-family: 'Noto Sans Arabic', 'Archivo', system-ui, sans-serif;
   margin: 0;
   direction: rtl;
 }

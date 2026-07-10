@@ -102,13 +102,24 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
 
   return (
     <div className="space-y-3">
+      {/* إجمالي المدفوع */}
+      <div className="bg-[#0d0d0d] border border-[var(--color-card-border)] rounded-xl p-4">
+        <p className="text-xs text-[var(--color-gold)] font-medium">إجمالي المدفوع</p>
+        <p className="text-2xl font-bold text-[var(--color-gold)] mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+          {payments.filter(p => p.status === 'approved').reduce((s, p) => s + Number(p.amount), 0).toFixed(2)} SAR
+        </p>
+        <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
+          من أصل {payments.reduce((s, p) => s + Number(p.amount), 0).toFixed(2)} SAR
+        </p>
+      </div>
+
       {/* طرق الدفع المتاحة */}
       {methods.length > 0 && (
         <div className="bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-xl p-4">
           <p className="text-sm font-medium mb-2">طرق الدفع المتاحة:</p>
           <div className="flex flex-wrap gap-2">
             {methods.map((m) => (
-              <span key={m} className="px-3 py-1 bg-blue-900/30 text-blue-400 rounded-full text-xs">
+              <span key={m} className="px-3 py-1 bg-[var(--color-primary)]/20 text-[var(--color-primary)] rounded-full text-xs font-medium">
                 {methodLabels[m] || m}
               </span>
             ))}
@@ -118,8 +129,8 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
 
       {/* تنبيه بوجود عقد معتمد يتطلب الدفع */}
       {!pendingPayment && payableContract && (
-        <div className="bg-amber-900/30 border border-amber-200 rounded-xl p-4">
-          <p className="text-sm text-amber-700 font-medium">
+        <div className="bg-[var(--color-card)] border border-[var(--color-gold)]/30 rounded-xl p-4">
+          <p className="text-sm text-[var(--color-gold)] font-medium">
             💳 عقد "{payableContract.title}" معتمد — المبلغ: {payableContract.value} ر.س
           </p>
         </div>
@@ -183,8 +194,9 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         ? <EmptyState message="لا توجد مدفوعات" />
         : payments.map((p) => {
           const linkedContract = p.contract;
+          const isPending = p.status === 'pending';
           return (
-          <div key={p.id} className="border border-[var(--color-card-border)] rounded-lg p-4 flex justify-between items-center">
+          <div key={p.id} className={`border rounded-lg p-4 flex justify-between items-center ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
             <div>
               <p className="font-medium">{p.amount} ر.س</p>
               <p className="text-xs text-[var(--color-text-disabled)]">{methodLabels[p.method_type] || p.method_type}</p>
@@ -203,7 +215,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 p.status === 'approved' ? 'bg-green-900/30 text-green-400' :
                 p.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
-                'bg-yellow-900/30 text-yellow-400'
+                'bg-[var(--color-gold)]/20 text-[var(--color-gold)]'
               }`}>
                 {p.status === 'approved' ? 'مقبول' : p.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
               </span>

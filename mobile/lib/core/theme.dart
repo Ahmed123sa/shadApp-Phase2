@@ -3,13 +3,13 @@ import 'package:google_fonts/google_fonts.dart';
 
 class ShadColors {
   // Brand Core (70/20/10 Rule)
-  static const Color black = Color(0xFF1A1A1A);
+  static const Color black = Color(0xFF1C1C1C);
   static const Color crimson = Color(0xFF941414);
   static const Color whiteSoft = Color(0xFFF0F0F0);
   static const Color gold = Color(0xFFD4AF37);
 
   // Surfaces
-  static const Color surface = Color(0xFF1A1A1A);
+  static const Color surface = Color(0xFF1C1C1C);
   static const Color card = Color(0xFF222222);
   static const Color cardBorder = Color(0xFF2A2A2A);
   static const Color divider = Color(0xFF2A2A2A);

@@ -127,15 +127,15 @@ class _PaymentsPageState extends State<PaymentsPage> {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: ShadColors.card,
+                color: const Color(0xFF0D0D0D),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ShadColors.cardBorder),
               ),
               child: Column(children: [
-                Text('Total Paid', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                Text('إجمالي المدفوع', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
                 const SizedBox(height: 8),
                 Text('${_totalPaid.toStringAsFixed(2)} ${_payments.isNotEmpty ? _currency(_payments.first) : 'SAR'}',
-                  style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
                 const SizedBox(height: 4),
                 Text('من أصل $grandTotal SAR — $pendingCount دفعات معلّقة',
                   style: TextStyle(fontSize: 11, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
@@ -154,13 +154,13 @@ class _PaymentsPageState extends State<PaymentsPage> {
             const SizedBox(height: 16),
 
             Row(children: [
-              _filterChip('All', 'all'),
+              _filterChip('الكل', 'all'),
               const SizedBox(width: 8),
-              _filterChip('Approved', 'approved'),
+              _filterChip('مقبولة', 'approved'),
               const SizedBox(width: 8),
-              _filterChip('Pending', 'pending'),
+              _filterChip('معلّقة', 'pending'),
               const SizedBox(width: 8),
-              _filterChip('Rejected', 'rejected'),
+              _filterChip('مرفوضة', 'rejected'),
             ]),
             const SizedBox(height: 12),
 
@@ -170,7 +170,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 child: Column(children: [
                   const Icon(Icons.payment_outlined, size: 48, color: ShadColors.textDisabled),
                   const SizedBox(height: 12),
-                  Text('No payments yet', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                  Text('لا توجد مدفوعات بعد', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
                 ]),
               )
             else
@@ -378,7 +378,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
       decoration: BoxDecoration(
         color: ShadColors.card,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isPending ? ShadColors.gold : ShadColors.cardBorder, width: isPending ? 1.5 : 1),
+        border: Border.all(color: isPending ? ShadColors.gold : ShadColors.cardBorder, width: isPending ? 1.5 : 0.5),
       ),
       child: Row(children: [
         Container(

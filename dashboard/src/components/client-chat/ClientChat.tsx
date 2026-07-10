@@ -92,11 +92,23 @@ export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?
           const isPending = m.requires_action && !m.action_taken;
           const isResponded = m.action_taken;
           const approval = m.approval;
+          const sender = m.sender;
+          const senderAvatarUrl = sender?.avatar_url as string | undefined;
+          const senderName = sender?.name as string | undefined;
           return (
-            <div key={m.id} className={`flex ${sentByClient ? 'justify-end' : 'justify-start'}`}>
+            <div key={m.id} className={`flex gap-2 ${sentByClient ? 'justify-end' : 'justify-start'}`}>
+              {!sentByClient && (
+                <div className="flex-shrink-0 w-8 h-8 rounded-full border border-[var(--color-primary)] overflow-hidden bg-[var(--color-input-fill)] flex items-center justify-center text-xs text-[var(--color-gold)] font-bold mt-1">
+                  {senderAvatarUrl ? (
+                    <img src={senderAvatarUrl.startsWith('http') ? senderAvatarUrl : `${CLIENT_FILE_BASE}/storage/${senderAvatarUrl.replace(/^\/?storage\//, '')}`} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span>{senderName?.[0]?.toUpperCase() || '?'}</span>
+                  )}
+                </div>
+              )}
               <div className="max-w-xs">
-                <div className={`px-3 py-2 rounded-lg text-sm ${sentByClient ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-input-fill)] text-[var(--color-foreground)]'}`}>
-                  <p className={`text-xs mb-0.5 ${sentByClient ? 'text-blue-200' : 'text-[var(--color-text-secondary)]'}`}>
+                <div className={`px-3 py-2 text-sm ${sentByClient ? 'bg-[var(--color-primary)] text-white rounded-br-lg rounded-tl-lg rounded-tr-lg' : 'bg-[var(--color-card)] text-[var(--color-foreground)] rounded-bl-lg rounded-tl-lg rounded-tr-lg'}`}>
+                  <p className={`text-xs mb-0.5 ${sentByClient ? 'text-[var(--color-gold)]' : 'text-[var(--color-text-secondary)]'}`}>
                     {sentByClient ? 'أنت' : ((m.sender?.role === 'super_admin' ? 'مشرف' : 'مدير حساب') + ': ' + (m.sender?.name || ''))}
                   </p>
                   {m.type === 'file' && m.file_url && (
@@ -131,14 +143,14 @@ export default function ClientChat({ wsId, wsActive }: { wsId: number; wsActive?
       </div>
 
       {sendError && <p className="text-xs text-red-500">{sendError}</p>}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <input type="file" ref={fileRef} className="hidden" onChange={(e) => setUploadFile(e.target.files?.[0] || null)} />
-        <button onClick={() => fileRef.current?.click()} className="text-[var(--color-text-secondary)] hover:text-[var(--color-gold)] text-lg px-1" title="إرفاق ملف">📎</button>
-        {uploadFile && <span className="text-xs text-[var(--color-gold)] self-center truncate max-w-24">{uploadFile.name}</span>}
+        <button onClick={() => fileRef.current?.click()} className="text-[var(--color-text-secondary)] hover:text-[var(--color-gold)] text-lg px-1 flex-shrink-0" title="إرفاق ملف">📎</button>
+        {uploadFile && <span className="text-xs text-[var(--color-gold)] self-center truncate max-w-24 flex-shrink-0">{uploadFile.name}</span>}
         <input value={text} onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && send()}
-          className="flex-1 border border-[var(--color-input-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-input-fill)] text-[var(--color-foreground)] placeholder-[var(--color-text-disabled)]" placeholder="اكتب رسالة..." />
-        <button onClick={send} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg text-sm hover:bg-[var(--color-primary-dark)]">إرسال</button>
+          className="flex-1 border border-[var(--color-input-border)] rounded-full px-4 py-2 text-sm bg-[var(--color-input-fill)] text-[var(--color-foreground)] placeholder-[var(--color-text-disabled)]" placeholder="اكتب رسالة..." />
+        <button onClick={send} className="bg-[var(--color-primary)] text-white w-9 h-9 rounded-full flex items-center justify-center hover:bg-[var(--color-primary-dark)] flex-shrink-0" title="إرسال">↑</button>
       </div>
     </div>
   );
