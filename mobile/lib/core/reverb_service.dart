@@ -159,7 +159,9 @@ class ReverbService {
   }
 
   void _send(Map<String, dynamic> data) {
-    _channel?.sink.add(jsonEncode(data));
+    try {
+      _channel?.sink.add(jsonEncode(data));
+    } catch (_) {}
   }
 
   Future<void> _reconnect() async {
