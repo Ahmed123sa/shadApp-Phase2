@@ -59,6 +59,8 @@ class ShadColors {
   static const Color archived = Color(0xFF52525B);
 }
 
+const String arabicFont = 'Tajawal';
+
 final Map<String, Color> statusColors = {
   'draft': ShadColors.draft,
   'sent': ShadColors.sent,
@@ -114,10 +116,8 @@ ThemeData shadTheme() {
   final textTheme = GoogleFonts.getTextTheme(
     'Playfair Display',
     GoogleFonts.archivoTextTheme(
-      GoogleFonts.amiriTextTheme(
-        GoogleFonts.notoSansArabicTextTheme(
-          ThemeData.dark().textTheme,
-        ),
+      GoogleFonts.tajawalTextTheme(
+        ThemeData.dark().textTheme,
       ),
     ),
   );
@@ -125,7 +125,7 @@ ThemeData shadTheme() {
   return ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
-    fontFamily: 'NotoSansArabic',
+    fontFamily: arabicFont,
     textTheme: textTheme,
     colorScheme: const ColorScheme.dark(
       primary: ShadColors.crimson,
@@ -149,7 +149,7 @@ ThemeData shadTheme() {
       color: ShadColors.card,
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         side: const BorderSide(color: ShadColors.cardBorder),
       ),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

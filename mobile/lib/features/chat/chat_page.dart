@@ -356,7 +356,7 @@ class _ChatPageState extends State<ChatPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isClient ? ShadColors.primary : ShadColors.secondary,
+        color: isClient ? ShadColors.primary : const Color(0xFF2A2A2A),
         borderRadius: BorderRadius.only(
           topLeft: const Radius.circular(16),
           topRight: const Radius.circular(16),

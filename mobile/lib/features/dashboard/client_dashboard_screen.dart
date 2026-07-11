@@ -295,20 +295,53 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
           IconButton(icon: const Icon(Icons.logout_rounded), onPressed: _logout, tooltip: 'تسجيل الخروج'),
         ],
       ),
-      body: IndexedStack(
-        index: _selectedIndex >= 5 ? _selectedIndex : _selectedIndex,
+      body: Stack(
         children: [
-          ...pages,
-          const MeetingsPage(),
-          const SignatureTab(),
-          const SubUsersPage(),
+          IndexedStack(
+            index: _selectedIndex >= 5 ? _selectedIndex : _selectedIndex,
+            children: [
+              ...pages,
+              const MeetingsPage(),
+              const SignatureTab(),
+              const SubUsersPage(),
+            ],
+          ),
+          if (_selectedIndex == 3)
+            Positioned(
+              bottom: 16, left: 16,
+              child: FloatingActionButton(
+                onPressed: () {},
+                backgroundColor: ShadColors.crimson,
+                foregroundColor: Colors.white,
+                shape: CircleBorder(side: BorderSide(color: ShadColors.gold, width: 1.5)),
+                child: const Icon(Icons.add, size: 24),
+              ),
+            ),
         ],
       ),
       bottomNavigationBar: Container(
         decoration: const BoxDecoration(
           border: Border(top: BorderSide(color: ShadColors.cardBorder)),
         ),
-        child: NavigationBar(
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            navigationBarTheme: NavigationBarThemeData(
+              indicatorColor: ShadColors.crimson.withAlpha(46),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ShadColors.gold);
+                }
+                return TextStyle(fontSize: 11, color: ShadColors.textSecondary);
+              }),
+              iconTheme: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return IconThemeData(size: 22, color: ShadColors.gold);
+                }
+                return IconThemeData(size: 22, color: ShadColors.textSecondary);
+              }),
+            ),
+          ),
+          child: NavigationBar(
           selectedIndex: _selectedIndex >= 5 ? 0 : _selectedIndex,
           onDestinationSelected: (i) {
             if (_isTabLocked(i)) {
@@ -352,6 +385,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
             ),
           ],
         ),
+      ),
       ),
     );
   }

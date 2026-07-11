@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
-import '../../core/widgets/shad_logo.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -18,6 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _passwordVisible = false;
   String? _error;
   bool _loading = false;
+
   Future<void> _login() async {
     if (_emailController.text.trim().isEmpty || _passwordController.text.isEmpty) {
       setState(() => _error = 'يرجى إدخال البريد الإلكتروني وكلمة المرور');
@@ -80,197 +80,114 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     final isAr = Localizations.localeOf(context).languageCode == 'ar';
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topRight,
-            radius: 1.2,
-            colors: [Color(0x26141414), Colors.transparent],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                const ShadLogo(size: 96),
-                const SizedBox(height: 12),
-                Text(isAr ? 'مرحباً بعودتك' : 'Welcome back', style: isAr
-                  ? TextStyle(fontSize: 26, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Amiri', height: 1.3)
-                  : ShadTypography.largeTitle.copyWith(fontSize: 30, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-                const SizedBox(height: 32),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              const SizedBox(height: 48),
+              // Logo
+              RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(text: 'd', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo')),
+                    TextSpan(text: '.SHAD', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(isAr ? 'بوابة العميل' : 'Client Portal',
+                style: TextStyle(fontSize: 13, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
+              const SizedBox(height: 48),
 
+              if (_error != null)
                 Container(
                   width: double.infinity,
-                  constraints: const BoxConstraints(maxWidth: 400),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: ShadColors.card,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: ShadColors.cardBorder),
-                  ),
-                    child: Column(children: [
-                    // d-motif corner
-                    SizedBox(
-                      height: 0,
-                      child: Stack(children: [
-                        Positioned(
-                          top: -24, right: -24,
-                          child: Opacity(
-                            opacity: 0.1,
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                              Container(width: 48, height: 2, color: ShadColors.crimson),
-                              const SizedBox(height: 2),
-                              Container(width: 6, height: 6, decoration: const BoxDecoration(shape: BoxShape.circle, color: ShadColors.gold)),
-                            ]),
-                          ),
-                        ),
-                      ]),
-                    ),
-
-                    const SizedBox(height: 24),
-
-                    if (_error != null)
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 16),
-                        decoration: BoxDecoration(color: ShadColors.errorLight, borderRadius: BorderRadius.circular(8)),
-                        child: Text(_error!, style: ShadTypography.cardBody.copyWith(color: ShadColors.error)),
-                      ),
-
-                    // Email
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(isAr ? 'البريد الإلكتروني' : 'Email Address', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _emailController,
-                        decoration: InputDecoration(
-                          hintText: 'example@domain.com',
-                          suffixIcon: Icon(Icons.mail_outline, size: 20, color: ShadColors.textSecondary),
-                          filled: true,
-                          fillColor: ShadColors.surface,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        textDirection: TextDirection.ltr,
-                      ),
-                    ]),
-                    const SizedBox(height: 16),
-
-                    // Password
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(isAr ? 'كلمة المرور' : 'Password', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
-                      const SizedBox(height: 6),
-                      TextField(
-                        controller: _passwordController,
-                        decoration: InputDecoration(
-                          hintText: '••••••••',
-                          suffixIcon: IconButton(
-                            icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility, size: 20),
-                            onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-                          ),
-                          filled: true,
-                          fillColor: ShadColors.surface,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                        ),
-                        obscureText: !_passwordVisible,
-                        textDirection: TextDirection.ltr,
-                        onSubmitted: (_) => _login(),
-                      ),
-                    ]),
-                    const SizedBox(height: 12),
-
-                    // Forgot password
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: TextButton(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                        child: Text(isAr ? 'نسيت كلمة المرور؟' : 'Forgot Password?', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _loading ? null : _login,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ShadColors.crimson,
-                          foregroundColor: ShadColors.textOnCrimson,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        child: _loading
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                          : Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                              Text(isAr ? 'تسجيل الدخول' : 'Sign In', style: ShadTypography.buttonLabel),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.login, size: 18),
-                            ]),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Divider
-                    Row(children: [
-                      const Expanded(child: Divider(color: ShadColors.cardBorder)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(isAr ? 'أو' : 'or', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                      ),
-                      const Expanded(child: Divider(color: ShadColors.cardBorder)),
-                    ]),
-                    const SizedBox(height: 16),
-
-                    // Social
-                    Row(children: [
-                      Expanded(child: _socialButton(Icons.g_mobiledata_rounded, 'Google')),
-                      const SizedBox(width: 12),
-                      Expanded(child: _socialButton(Icons.apple, 'Apple')),
-                    ]),
-                  ]),
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(color: ShadColors.errorLight, borderRadius: BorderRadius.circular(8)),
+                  child: Text(_error!, style: TextStyle(fontSize: 12, color: ShadColors.error, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
                 ),
 
-                const SizedBox(height: 24),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(isAr ? 'ليس لديك حساب؟' : "Don't have an account?", style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
-                  const SizedBox(width: 8),
-                  TextButton(
-                    onPressed: () {},
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
-                    child: Text(isAr ? 'طلب دخول' : 'Request Access', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontWeight: FontWeight.bold)),
+              // Email
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(isAr ? 'البريد الإلكتروني' : 'Email',
+                  style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _emailController,
+                  decoration: InputDecoration(
+                    hintText: 'example@domain.com',
+                    filled: true,
+                    fillColor: ShadColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: ShadColors.gold)),
                   ),
-                ]),
-                const SizedBox(height: 16),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text('SECURE', style: TextStyle(fontSize: 10, letterSpacing: 2, color: ShadColors.textDisabled.withAlpha(100))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('•', style: TextStyle(color: ShadColors.textDisabled.withAlpha(100)))),
-                  Text('INSTITUTIONAL', style: TextStyle(fontSize: 10, letterSpacing: 2, color: ShadColors.textDisabled.withAlpha(100))),
-                  Padding(padding: const EdgeInsets.symmetric(horizontal: 8), child: Text('•', style: TextStyle(color: ShadColors.textDisabled.withAlpha(100)))),
-                  Text('COMPLIANT', style: TextStyle(fontSize: 10, letterSpacing: 2, color: ShadColors.textDisabled.withAlpha(100))),
-                ]),
+                  style: TextStyle(fontSize: 13, color: ShadColors.textPrimary),
+                  keyboardType: TextInputType.emailAddress,
+                  textDirection: TextDirection.ltr,
+                ),
               ]),
-            ),
+              const SizedBox(height: 14),
+
+              // Password
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(isAr ? 'كلمة المرور' : 'Password',
+                  style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _passwordController,
+                  decoration: InputDecoration(
+                    hintText: '••••••••',
+                    suffixIcon: IconButton(
+                      icon: Icon(_passwordVisible ? Icons.visibility_off : Icons.visibility, size: 20),
+                      onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
+                    ),
+                    filled: true,
+                    fillColor: ShadColors.surface,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: ShadColors.gold)),
+                  ),
+                  style: TextStyle(fontSize: 13, color: ShadColors.textPrimary),
+                  obscureText: !_passwordVisible,
+                  textDirection: TextDirection.ltr,
+                  onSubmitted: (_) => _login(),
+                ),
+              ]),
+              const SizedBox(height: 18),
+
+              // Sign In
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ShadColors.crimson,
+                    foregroundColor: ShadColors.textOnCrimson,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: _loading
+                    ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                    : Text(isAr ? 'تسجيل الدخول' : 'Sign In',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Forgot password
+              TextButton(
+                onPressed: () {},
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                child: Text(isAr ? 'نسيت كلمة المرور؟' : 'Forgot Password?',
+                  style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
+              ),
+            ]),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _socialButton(IconData icon, String label) {
-    return OutlinedButton(
-      onPressed: () {},
-      style: OutlinedButton.styleFrom(
-        foregroundColor: ShadColors.textSecondary,
-        side: const BorderSide(color: ShadColors.cardBorder),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        padding: const EdgeInsets.symmetric(vertical: 12),
-      ),
-      child: Icon(icon, size: 20),
     );
   }
 }

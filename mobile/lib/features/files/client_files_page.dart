@@ -166,7 +166,14 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
                   }
                 } : null,
-                leading: const Icon(Icons.attach_file, color: ShadColors.primary),
+                leading: Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(
+                    color: ShadColors.gold.withAlpha(38),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.attach_file, size: 18, color: ShadColors.gold),
+                ),
                 title: Text(f['name'] ?? '', style: ShadTypography.cardTitle, overflow: TextOverflow.ellipsis),
                 subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   if (f['definition_name'] != null)
