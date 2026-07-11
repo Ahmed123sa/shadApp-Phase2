@@ -237,10 +237,16 @@ class _ContractsPageState extends State<ContractsPage> {
                   const SizedBox(width: 8),
                   Expanded(child: Text('تم اعتماد العقد من الشركة', style: const TextStyle(fontSize: 11, color: ShadColors.success))),
                   if (c['pdf_url'] != null)
-                    TextButton.icon(
+                    OutlinedButton.icon(
                       onPressed: () => _downloadPdf(c['pdf_url'] as String),
                       icon: const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.success),
-                      label: const Text('PDF', style: TextStyle(fontSize: 10, color: ShadColors.success)),
+                      label: const Text('تحميل PDF', style: TextStyle(fontSize: 10, color: ShadColors.success)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: ShadColors.success,
+                        side: const BorderSide(color: ShadColors.success),
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      ),
                     ),
                 ]),
                 if (widget.onGoToPayments != null) ...[
@@ -307,6 +313,27 @@ class _ContractDetailModal extends StatefulWidget {
 class _ContractDetailModalState extends State<_ContractDetailModal> {
   final _api = ApiClient();
   bool _uploading = false;
+  List<dynamic> _uploadedFiles = [];
+  bool _loadingFiles = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUploadedFiles();
+  }
+
+  Future<void> _loadUploadedFiles() async {
+    final wsId = _api.workspaceId;
+    if (wsId == null) return;
+    setState(() => _loadingFiles = true);
+    try {
+      final data = await _api.get('/workspaces/$wsId/files');
+      final allFiles = safeList(data['files']);
+      final contractId = widget.contract['id'];
+      _uploadedFiles = allFiles.where((f) => f['contract_id'] == contractId).toList();
+    } catch (_) {}
+    if (mounted) setState(() => _loadingFiles = false);
+  }
 
   Future<void> _uploadDocument(int contractId, int? definitionId) async {
     final result = await FilePicker.platform.pickFiles(
@@ -380,7 +407,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(c['title'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
                 const SizedBox(height: 4),
-                Text('رقم #${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
                 const SizedBox(height: 12),
                 Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
                 const SizedBox(height: 12),
@@ -441,11 +468,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                 child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   const Icon(Icons.circle, size: 6, color: ShadColors.textDisabled),
                   const SizedBox(width: 8),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(cl['content'] ?? '', style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary)),
-                    if (cl['type'] != null)
-                      Text(cl['type'], style: const TextStyle(fontSize: 10, color: ShadColors.textDisabled)),
-                  ])),
+                  Expanded(child: Text(cl['content'] ?? '', style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary))),
                 ]),
               )),
               const SizedBox(height: 16),
@@ -510,6 +533,46 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   ]),
                 );
               }),
+              const SizedBox(height: 16),
+            ],
+
+            // Uploaded files
+            if (_loadingFiles) ...[
+              const Padding(padding: EdgeInsets.symmetric(vertical: 12), child: Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))),
+            ] else if (_uploadedFiles.isNotEmpty) ...[
+              Text('الملفات المرفوعة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
+              const SizedBox(height: 8),
+              ..._uploadedFiles.map((f) => Container(
+                margin: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: ShadColors.card,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: ShadColors.cardBorder),
+                ),
+                child: Row(children: [
+                  const Icon(Icons.attach_file, size: 16, color: ShadColors.gold),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => _downloadFile(f['file_url'] as String? ?? ''),
+                      child: Text(f['name'] ?? '', style: const TextStyle(fontSize: 12, color: ShadColors.primary, decoration: TextDecoration.underline))),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: (f['status'] as String?) == 'approved'
+                          ? ShadColors.success.withAlpha(25)
+                          : ShadColors.warning.withAlpha(25),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      statusLabels[f['status'] as String? ?? ''] ?? f['status'] ?? '',
+                      style: TextStyle(fontSize: 9, color: (f['status'] as String?) == 'approved' ? ShadColors.success : ShadColors.warning),
+                    ),
+                  ),
+                ]),
+              )),
               const SizedBox(height: 16),
             ],
 
@@ -632,8 +695,11 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
 
   static int _computeStageIndex(dynamic c) {
     final stageMap = <String, int>{
-      'draft': 0, 'sent': 0, 'client_approved': 1, 'edit_requested': 1,
-      'company_approved': 2, 'completed': 3,
+      'onboarding': 0, 'draft': 0, 'sent': 0,
+      'client_approved': 1, 'edit_requested': 1,
+      'company_approved': 2,
+      'payment_approved': 3, 'payment_pending': 3,
+      'completed': 5,
     };
     return stageMap[c['status'] as String? ?? ''] ?? 0;
   }
@@ -650,6 +716,25 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
         Text(value, style: TextStyle(fontSize: 12, color: gold ? ShadColors.gold : ShadColors.textPrimary, fontWeight: gold ? FontWeight.w600 : FontWeight.w400)),
       ]),
     );
+  }
+
+  Future<void> _downloadFile(String fileUrl) async {
+    if (fileUrl.isEmpty) return;
+    final url = _api.resolveFileUrl(fileUrl);
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+        }
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('رابط الملف غير صالح')));
+      }
+    }
   }
 
   Future<void> _downloadPdf(String pdfUrl) async {
