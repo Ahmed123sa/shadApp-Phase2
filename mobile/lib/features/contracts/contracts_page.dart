@@ -138,7 +138,7 @@ class _ContractsPageState extends State<ContractsPage> {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           SizedBox(width: 32, height: 32, child: CircularProgressIndicator(strokeWidth: 3)),
           SizedBox(height: 16),
-          Text('في انتظار استلام العقد', style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+          Text('في انتظار استلام العقد', style: TextStyle(fontSize: 14, color: ShadColors.textSecondary)),
         ]),
       );
     }
@@ -157,162 +157,136 @@ class _ContractsPageState extends State<ContractsPage> {
   Widget _contractCard(dynamic c) {
     final status = c['status'] as String? ?? '';
     final needsAction = status == 'sent';
+    final isApproved = status == 'company_approved';
 
     return GestureDetector(
       onTap: () => _showDetailModal(c),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
           color: ShadColors.card,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: ShadColors.cardBorder),
         ),
-        child: Column(children: [
-          Row(children: [
-            Container(
-              width: 3, height: needsAction ? 100 : 72,
-              decoration: BoxDecoration(
-                color: needsAction ? ShadColors.gold : ShadColors.crimson,
-                borderRadius: const BorderRadius.horizontal(left: Radius.circular(10)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(children: [
-                  Container(
-                    width: 44, height: 44,
-                    decoration: BoxDecoration(
-                      color: ShadColors.black,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(Icons.description, size: 22, color: ShadColors.gold),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child:                     Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Text(c['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
-                      const SizedBox(height: 4),
-                      Row(children: [
-                        Text('Ref: ${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                        if ((c['required_documents'] as List?)?.isNotEmpty == true) ...[
-                          const SizedBox(width: 8),
-                          Text('${(c['required_documents'] as List).length} مستندات', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
-                        ],
-                      ]),
-                    ]),
-                  ),
-                  Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    StatusBadge(status: status),
-                    const SizedBox(height: 4),
-                    Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-                  ]),
-                ]),
-              ),
-            ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Text(c['title'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary))),
+            StatusBadge(status: status),
           ]),
-          if (needsAction)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: Row(children: [
-                Expanded(
-                  child: SizedBox(
-                    height: 32,
+          const SizedBox(height: 6),
+          Row(children: [
+            Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+            const Spacer(),
+            Text('Ref: ${c['id'] ?? ''}', style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+          ]),
+          if (c['start_date'] != null) ...[
+            const SizedBox(height: 4),
+            Text((c['start_date'] as String).split('T')[0], style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+          ],
+          if (needsAction) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: SizedBox(
+                  height: 32,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _clientAction(c['id'], 'approved'),
+                    icon: const Icon(Icons.check, size: 14),
+                    label: const Text('موافقة', style: TextStyle(fontSize: 11)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ShadColors.success,
+                      foregroundColor: Colors.white,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: SizedBox(
+                  height: 32,
+                  child: OutlinedButton.icon(
+                    onPressed: () => _clientAction(c['id'], 'edit_requested'),
+                    icon: const Icon(Icons.edit, size: 14),
+                    label: const Text('تعديل', style: TextStyle(fontSize: 11)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ShadColors.warning,
+                      side: const BorderSide(color: ShadColors.warning),
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    ),
+                  ),
+                ),
+              ),
+            ]),
+          ],
+          if (isApproved) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: ShadColors.success.withAlpha(15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ShadColors.success.withAlpha(40)),
+              ),
+              child: Column(children: [
+                Row(children: [
+                  const Icon(Icons.check_circle, size: 16, color: ShadColors.success),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text('تم اعتماد العقد من الشركة', style: const TextStyle(fontSize: 11, color: ShadColors.success))),
+                  if (c['pdf_url'] != null)
+                    TextButton.icon(
+                      onPressed: () => _downloadPdf(c['pdf_url'] as String),
+                      icon: const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.success),
+                      label: const Text('PDF', style: TextStyle(fontSize: 10, color: ShadColors.success)),
+                    ),
+                ]),
+                if (widget.onGoToPayments != null) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
                     child: ElevatedButton.icon(
-                      onPressed: () => _clientAction(c['id'], 'approved'),
-                      icon: const Icon(Icons.check, size: 14),
-                      label: const Text('موافقة', style: TextStyle(fontSize: 11)),
+                      onPressed: () => widget.onGoToPayments?.call(),
+                      icon: const Icon(Icons.payment, size: 16),
+                      label: const Text('💳 انتقال إلى الدفع', style: TextStyle(fontSize: 12)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ShadColors.success,
                         foregroundColor: Colors.white,
-                        padding: EdgeInsets.zero,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: SizedBox(
-                    height: 32,
-                    child: OutlinedButton.icon(
-                      onPressed: () => _clientAction(c['id'], 'edit_requested'),
-                      icon: const Icon(Icons.edit, size: 14),
-                      label: const Text('تعديل', style: TextStyle(fontSize: 11)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: ShadColors.warning,
-                        side: const BorderSide(color: ShadColors.warning),
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                    ),
-                  ),
-                ),
-
+                ],
               ]),
             ),
-          if (status == 'company_approved')
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: ShadColors.success.withAlpha(15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: ShadColors.success.withAlpha(40)),
-                ),
-                child: Column(children: [
-                  Row(children: [
-                    const Icon(Icons.check_circle, size: 16, color: ShadColors.success),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text('تم اعتماد العقد من الشركة', style: TextStyle(fontSize: 11, color: ShadColors.success, fontFamily: 'NotoSansArabic')),
-                    ),
-                    if (c['pdf_url'] != null)
-                      TextButton(
-                        onPressed: () async {
-                          final url = _api.resolveFileUrl(c['pdf_url'] as String);
-                          final uri = Uri.tryParse(url);
-                          final messenger = ScaffoldMessenger.of(context);
-                          if (uri != null) {
-                            try {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            } catch (_) {
-                              messenger.showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                            }
-                          } else {
-                            messenger.showSnackBar(const SnackBar(content: Text('رابط الملف غير صالح')));
-                          }
-                        },
-                        child: const Icon(Icons.download, size: 16, color: ShadColors.success),
-                      ),
-                  ]),
-                  if (widget.onGoToPayments != null) ...[
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () => widget.onGoToPayments?.call(),
-                        icon: const Icon(Icons.payment, size: 16),
-                        label: const Text('💳 انتقال إلى الدفع', style: TextStyle(fontSize: 12)),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ShadColors.success,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ]),
-              ),
-            ),
+          ],
         ]),
       ),
     );
   }
 
   void _showDetailModal(dynamic c) { showModalBottomSheet(context: context, isScrollControlled: true, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))), builder: (_) => _ContractDetailModal(contract: c, onAction: _clientAction, onRefresh: _load, onGoToPayments: widget.onGoToPayments)); }
+
+  Future<void> _downloadPdf(String pdfUrl) async {
+    final url = _api.resolveFileUrl(pdfUrl);
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+        }
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('رابط الملف غير صالح')));
+      }
+    }
+  }
 }
 
 class _ContractDetailModal extends StatefulWidget {
@@ -371,6 +345,9 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
     final needsAction = status == 'sent';
     final isCompanyApproved = status == 'company_approved';
 
+    final progress = c['progress'] is num ? (c['progress'] as num).toDouble() : 0.0;
+    final stageIndex = _computeStageIndex(c);
+
     return DraggableScrollableSheet(
       initialChildSize: 0.75,
       minChildSize: 0.5,
@@ -381,44 +358,77 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
         child: ListView(
           controller: scrollController,
           children: [
-            Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(c['title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-                  const SizedBox(height: 4),
-                  Text('Ref: ${c['id'] ?? ''}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                ]),
+            // Back row
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Row(children: [
+                const Icon(Icons.arrow_forward_ios, size: 12, color: ShadColors.textSecondary),
+                const SizedBox(width: 6),
+                Text('كل العقود', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+              ]),
+            ),
+            const SizedBox(height: 14),
+
+            // detail-card
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D0D0D),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: ShadColors.cardBorder),
               ),
-              StatusBadge(status: status),
-              const SizedBox(width: 8),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ]),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(c['title'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                const SizedBox(height: 4),
+                Text('رقم #${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                const SizedBox(height: 12),
+                Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: const Color(0xFF2A2A2A),
+                    valueColor: const AlwaysStoppedAnimation(ShadColors.gold),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(children: List.generate(6, (i) {
+                  final done = i < stageIndex;
+                  final current = i == stageIndex;
+                  return Expanded(
+                    child: Container(
+                      height: 5, margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: done ? ShadColors.crimson : current ? ShadColors.gold : const Color(0xFF2A2A2A),
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                  );
+                })),
+              ]),
+            ),
             const SizedBox(height: 16),
 
-            if (c['value'] != null || c['start_date'] != null || c['end_date'] != null) ...[
-              Row(children: [
-                if (c['value'] != null)
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('VALUE', style: TextStyle(fontSize: 9, letterSpacing: 1, color: ShadColors.textDisabled, fontFamily: 'Archivo')),
-                    Text('${c['value']} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-                  ])),
-                if (c['start_date'] != null)
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('START', style: TextStyle(fontSize: 9, letterSpacing: 1, color: ShadColors.textDisabled, fontFamily: 'Archivo')),
-                    Text((c['start_date'] as String).split('T')[0], style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
-                  ])),
-                if (c['end_date'] != null)
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('END', style: TextStyle(fontSize: 9, letterSpacing: 1, color: ShadColors.textDisabled, fontFamily: 'Archivo')),
-                    Text((c['end_date'] as String).split('T')[0], style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
-                  ])),
-              ]),
-              const SizedBox(height: 16),
-            ],
+            // Info rows
+            Text('معلومات العقد', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+            const SizedBox(height: 8),
+            if (c['start_date'] != null)
+              _infoRow('تاريخ البداية', (c['start_date'] as String).split('T')[0]),
+            if (c['end_date'] != null)
+              _infoRow('تاريخ الإنتهاء', (c['end_date'] as String).split('T')[0]),
+            if (c['value'] != null)
+              _infoRow('قيمة العقد', '${c['value']} ${c['currency'] as String? ?? 'SAR'}', gold: true),
+            if (c['paid'] != null)
+              _infoRow('المدفوع', '${c['paid']} ${c['currency'] as String? ?? 'SAR'}', gold: true),
+            if (c['remaining'] != null)
+              _infoRow('المتبقي', '${c['remaining']} ${c['currency'] as String? ?? 'SAR'}'),
+            const SizedBox(height: 16),
 
-            // Clauses
+            // Clauses (only in modal)
             if (clauses.isNotEmpty) ...[
-              Text('بنود العقد', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'NotoSansArabic')),
+              Text('بنود العقد', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
               const SizedBox(height: 8),
               ...clauses.map((cl) => Container(
                 margin: const EdgeInsets.only(bottom: 6),
@@ -432,9 +442,9 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   const Icon(Icons.circle, size: 6, color: ShadColors.textDisabled),
                   const SizedBox(width: 8),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(cl['content'] ?? '', style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+                    Text(cl['content'] ?? '', style: const TextStyle(fontSize: 13, color: ShadColors.textPrimary)),
                     if (cl['type'] != null)
-                      Text(cl['type'], style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'Archivo')),
+                      Text(cl['type'], style: const TextStyle(fontSize: 10, color: ShadColors.textDisabled)),
                   ])),
                 ]),
               )),
@@ -443,7 +453,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
 
             // Required documents
             if (requiredDocs.isNotEmpty) ...[
-              Text('المستندات المطلوبة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'NotoSansArabic')),
+              Text('المستندات المطلوبة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
               const SizedBox(height: 8),
               ...requiredDocs.map((doc) {
                 final docStatus = doc['status'] as String? ?? 'pending';
@@ -462,7 +472,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   ),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Row(children: [
-                      Expanded(child: Text(doc['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
+                      Expanded(child: Text(doc['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ShadColors.textPrimary))),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
@@ -471,13 +481,13 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                         ),
                         child: Text(
                           statusLabels[docStatus] ?? docStatus,
-                          style: TextStyle(fontSize: 10, color: docStatusColor, fontWeight: FontWeight.w500, fontFamily: 'Archivo'),
+                          style: TextStyle(fontSize: 10, color: docStatusColor, fontWeight: FontWeight.w500),
                         ),
                       ),
                     ]),
                     if (doc['rejection_reason'] != null) ...[
                       const SizedBox(height: 4),
-                      Text('سبب الرفض: ${doc['rejection_reason']}', style: const TextStyle(fontSize: 11, color: ShadColors.error, fontFamily: 'NotoSansArabic')),
+                      Text('سبب الرفض: ${doc['rejection_reason']}', style: const TextStyle(fontSize: 11, color: ShadColors.error)),
                     ],
                     if (docStatus != 'approved') ...[
                       const SizedBox(height: 8),
@@ -503,9 +513,9 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               const SizedBox(height: 16),
             ],
 
-            // Action buttons (same as card)
+            // Action buttons
             if (needsAction) ...[
-              Text('الإجراءات', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'NotoSansArabic')),
+              Text('الإجراءات', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(
@@ -541,7 +551,6 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                     ),
                   ),
                 ),
-
               ]),
             ],
 
@@ -556,22 +565,13 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                 child: Column(children: [
                   const Icon(Icons.check_circle, size: 40, color: ShadColors.success),
                   const SizedBox(height: 8),
-                  Text('تم اعتماد العقد من قبل الشركة', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.success, fontFamily: 'NotoSansArabic')),
+                  Text('تم اعتماد العقد من قبل الشركة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.success)),
                   const SizedBox(height: 4),
-                  Text('يمكنك التوجه إلى صفحة الدفع لإتمام الدفعة', style: TextStyle(fontSize: 12, color: ShadColors.success, fontFamily: 'NotoSansArabic')),
+                  Text('يمكنك التوجه إلى صفحة الدفع لإتمام الدفعة', style: const TextStyle(fontSize: 12, color: ShadColors.success)),
                   if (c['pdf_url'] != null) ...[
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () async {
-                        final url = _api.resolveFileUrl(c['pdf_url'] as String);
-                        final uri = Uri.tryParse(url);
-                        if (uri != null && await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                        }
-                      },
+                      onPressed: () => _downloadPdf(c['pdf_url'] as String),
                       icon: const Icon(Icons.picture_as_pdf, size: 18),
                       label: const Text('تحميل PDF'),
                       style: OutlinedButton.styleFrom(
@@ -600,7 +600,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               ),
             ],
 
-            // Status messages for non-actionable statuses (like web)
+            // Status messages
             if (!needsAction && !isCompanyApproved && status != 'draft') ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -615,7 +615,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                     status == 'edit_requested' ? 'قمت بطلب تعديل العقد' :
                     status == 'rejected' ? 'قمت برفض هذا العقد' :
                     status == 'completed' ? 'العقد مكتمل' : '',
-                    style: TextStyle(fontSize: 13, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+                    style: const TextStyle(fontSize: 13, color: ShadColors.textSecondary),
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -628,5 +628,45 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
         ),
       ),
     );
+  }
+
+  static int _computeStageIndex(dynamic c) {
+    final stageMap = <String, int>{
+      'draft': 0, 'sent': 0, 'client_approved': 1, 'edit_requested': 1,
+      'company_approved': 2, 'completed': 3,
+    };
+    return stageMap[c['status'] as String? ?? ''] ?? 0;
+  }
+
+  Widget _infoRow(String label, String value, {bool gold = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 9),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
+      ),
+      child: Row(children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+        const Spacer(),
+        Text(value, style: TextStyle(fontSize: 12, color: gold ? ShadColors.gold : ShadColors.textPrimary, fontWeight: gold ? FontWeight.w600 : FontWeight.w400)),
+      ]),
+    );
+  }
+
+  Future<void> _downloadPdf(String pdfUrl) async {
+    final url = _api.resolveFileUrl(pdfUrl);
+    final uri = Uri.tryParse(url);
+    if (uri != null) {
+      try {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+        }
+      }
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('رابط الملف غير صالح')));
+      }
+    }
   }
 }
