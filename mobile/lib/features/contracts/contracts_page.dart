@@ -222,6 +222,23 @@ class _ContractsPageState extends State<ContractsPage> {
               ),
             ]),
           ],
+          if (c['pdf_url'] != null) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _downloadPdf(c['pdf_url'] as String),
+                icon: const Icon(Icons.picture_as_pdf, size: 16),
+                label: const Text('تحميل العقد (PDF)'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ShadColors.gold,
+                  side: const BorderSide(color: ShadColors.gold),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
           if (isApproved) ...[
             const SizedBox(height: 10),
             Container(
@@ -236,18 +253,6 @@ class _ContractsPageState extends State<ContractsPage> {
                   const Icon(Icons.check_circle, size: 16, color: ShadColors.success),
                   const SizedBox(width: 8),
                   Expanded(child: Text('تم اعتماد العقد من الشركة', style: const TextStyle(fontSize: 11, color: ShadColors.success))),
-                  if (c['pdf_url'] != null)
-                    OutlinedButton.icon(
-                      onPressed: () => _downloadPdf(c['pdf_url'] as String),
-                      icon: const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.success),
-                      label: const Text('تحميل PDF', style: TextStyle(fontSize: 10, color: ShadColors.success)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: ShadColors.success,
-                        side: const BorderSide(color: ShadColors.success),
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                    ),
                 ]),
                 if (widget.onGoToPayments != null) ...[
                   const SizedBox(height: 8),
@@ -474,8 +479,8 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               const SizedBox(height: 16),
             ],
 
-            // Required documents
-            if (requiredDocs.isNotEmpty) ...[
+            // Required documents (only show when action is needed)
+            if (requiredDocs.isNotEmpty && needsAction) ...[
               Text('المستندات المطلوبة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
               const SizedBox(height: 8),
               ...requiredDocs.map((doc) {
@@ -617,6 +622,25 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               ]),
             ],
 
+            // Download PDF (shown whenever available)
+            if (c['pdf_url'] != null) ...[
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _downloadPdf(c['pdf_url'] as String),
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('تحميل العقد (PDF)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ShadColors.gold,
+                    side: const BorderSide(color: ShadColors.gold),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+            ],
+
             if (isCompanyApproved) ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -631,19 +655,6 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   Text('تم اعتماد العقد من قبل الشركة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.success)),
                   const SizedBox(height: 4),
                   Text('يمكنك التوجه إلى صفحة الدفع لإتمام الدفعة', style: const TextStyle(fontSize: 12, color: ShadColors.success)),
-                  if (c['pdf_url'] != null) ...[
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: () => _downloadPdf(c['pdf_url'] as String),
-                      icon: const Icon(Icons.picture_as_pdf, size: 18),
-                      label: const Text('تحميل PDF'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: ShadColors.success,
-                        side: const BorderSide(color: ShadColors.success),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 12),
                   ElevatedButton.icon(
                     onPressed: () {
