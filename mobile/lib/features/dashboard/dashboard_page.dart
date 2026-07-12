@@ -16,7 +16,6 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserver {
   final _api = ApiClient();
-  Map<String, dynamic>? _client;
   Map<String, dynamic>? _workspace;
   bool _loading = true;
   String? _error;
@@ -61,7 +60,6 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     if (cid == null) return;
     try {
       final data = await _api.get('/clients/$cid');
-      _client = data['client'] as Map<String, dynamic>?;
       _workspace = data['client']?['workspace'] as Map<String, dynamic>?;
       if (_workspace != null) {
         final wsId = _workspace!['id'] as int?;

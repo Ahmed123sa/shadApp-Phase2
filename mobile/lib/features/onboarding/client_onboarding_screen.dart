@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/locale_provider.dart';
@@ -272,16 +273,16 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
             style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay'),
           ),
           const SizedBox(height: 12),
-          Text(
-            'يرجى إضافة توقيعك الإلكتروني للبدء',
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'من فضلك قم بإضافة توقيعك الإلكتروني للبدء في استخدام المساحة الخاصة بك',
-            style: TextStyle(fontSize: 12, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic'),
-            textAlign: TextAlign.center,
-          ),
+Text(
+  'يرجى إضافة توقيعك الإلكتروني للبدء',
+  style: TextStyle(fontSize: 14, color: ShadColors.textSecondary),
+),
+const SizedBox(height: 8),
+Text(
+  'من فضلك قم بإضافة توقيعك الإلكتروني للبدء في استخدام المساحة الخاصة بك',
+  style: TextStyle(fontSize: 12, color: ShadColors.textDisabled),
+  textAlign: TextAlign.center,
+),
           const SizedBox(height: 32),
           SizedBox(
             width: double.infinity,
@@ -332,7 +333,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
           const SizedBox(height: 12),
           Text(
             subtitle,
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -374,7 +375,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
           const SizedBox(height: 12),
           Text(
             'يرجى مراجعة العقد وإبداء موافقتك',
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary),
           ),
           const SizedBox(height: 32),
           SizedBox(
@@ -386,7 +387,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
                   final contracts = safeList(ws['contracts']);
                   if (contracts.isNotEmpty) {
                     final c = contracts.first as Map;
-                    context.push('/workspaces/${ws['id']}/contracts/${c['id']}');
+                    _showContractModal(c);
                   }
                 }
               },
@@ -427,6 +428,95 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     );
   }
 
+  void _showContractModal(Map c) {
+    final status = c['status'] as String? ?? '';
+    final needsAction = status == 'sent';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: ListView(
+          shrinkWrap: true,
+          children: [
+            Row(children: [
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(c['title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                  const SizedBox(height: 4),
+                  Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+                ]),
+              ),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+            ]),
+            const SizedBox(height: 16),
+            if (c['value'] != null)
+              Text('${c['value']} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+            const SizedBox(height: 8),
+            if (c['start_date'] != null)
+              Text('تاريخ البداية: ${(c['start_date'] as String).split('T')[0]}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+            if (c['end_date'] != null)
+              Text('تاريخ الإنتهاء: ${(c['end_date'] as String).split('T')[0]}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+            const SizedBox(height: 16),
+            if (c['pdf_url'] != null) ...[
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final url = _api.resolveFileUrl(c['pdf_url'] as String);
+                    final uri = Uri.tryParse(url);
+                    if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                  icon: const Icon(Icons.picture_as_pdf, size: 18),
+                  label: const Text('تحميل العقد (PDF)'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ShadColors.gold,
+                    side: const BorderSide(color: ShadColors.gold),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            if (needsAction) ...[
+              Row(children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () { Navigator.pop(context); _respondToContract('approved'); },
+                    icon: const Icon(Icons.check, size: 18),
+                    label: const Text('موافقة'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ShadColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () { Navigator.pop(context); _respondToContract('edit_requested'); },
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text('تعديل'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: ShadColors.warning,
+                      side: const BorderSide(color: ShadColors.warning),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ),
+              ]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _respondToContract(String action) async {
     final ws = _workspace;
     if (ws == null) return;
@@ -434,8 +524,26 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     if (contracts.isEmpty) return;
     final c = contracts.first as Map;
     final contractId = c['id'];
+    String? reason;
+    if (action == 'edit_requested') {
+      final controller = TextEditingController();
+      reason = await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('التعديلات المطلوبة'),
+          content: TextField(controller: controller, maxLines: 3, decoration: const InputDecoration(hintText: 'اذكر التعديلات المطلوبة...')),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text), child: const Text('تأكيد')),
+          ],
+        ),
+      );
+      if (reason == null) return;
+    }
     try {
-      await _api.post('/chat/$contractId/respond', {'action': action});
+      final body = <String, dynamic>{'action': action};
+      if (reason != null && reason.isNotEmpty) body['reason'] = reason;
+      await _api.post('/contracts/$contractId/client-action', body);
       _loadClientData();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -457,7 +565,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
       final contracts = safeList(ws['contracts']);
       for (final c in contracts) {
         if (c is Map) {
-          totalAmount += (c['amount'] as num? ?? 0).toDouble();
+          totalAmount += (c['value'] as num? ?? 0).toDouble();
         }
       }
     }
@@ -496,7 +604,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
             child: Column(children: [
               Text(
                 'المبلغ الإجمالي',
-                style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+                style: TextStyle(fontSize: 12, color: ShadColors.textSecondary),
               ),
               const SizedBox(height: 8),
               Text(
@@ -549,13 +657,13 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
           const SizedBox(height: 12),
           Text(
             'تم تفعيل مساحة العمل الخاصة بك بنجاح',
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             'يمكنك الآن البدء في استخدام جميع الخدمات',
-            style: TextStyle(fontSize: 12, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic'),
+            style: TextStyle(fontSize: 12, color: ShadColors.textDisabled),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
