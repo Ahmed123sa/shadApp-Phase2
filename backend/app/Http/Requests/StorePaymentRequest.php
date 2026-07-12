@@ -18,7 +18,8 @@ class StorePaymentRequest extends FormRequest
             'amount' => 'required|numeric|min:0',
             'method_type' => 'required|string',
             'currency' => 'nullable|string|max:10',
-            'proof_file' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+            'proof_files' => 'nullable|array',
+            'proof_files.*' => 'file|mimes:jpg,jpeg,png,pdf|max:10240',
             'notes' => 'nullable|string',
         ];
     }

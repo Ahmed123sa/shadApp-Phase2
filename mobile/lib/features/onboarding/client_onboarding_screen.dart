@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io' show File;
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
@@ -26,6 +31,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
   String? _error;
   int _lastStage = 0;
   bool _autoAdvancing = false;
+  String _prevWsStatus = '';
   StreamSubscription? _fcmSubscription;
   final ValueNotifier<int> _contractRefreshNotifier = ValueNotifier<int>(0);
 
@@ -35,9 +41,8 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     if (client == null || ws == null) return 0;
     final contractsList = safeList(ws['contracts']);
     final paymentsList = safeList(ws['payments']);
-    final wsStatus = ws['status'] as String? ?? '';
-    if (wsStatus == 'active') return 6;
     if (paymentsList.any((p) => p is Map && p['status'] == 'approved')) return 5;
+    if (paymentsList.isNotEmpty) return 5;
     if (contractsList.any((c) => c is Map && c['status'] == 'completed')) return 4;
     if (contractsList.any((c) => c is Map && c['status'] == 'archived')) return 4;
     if (contractsList.any((c) => c is Map && c['status'] == 'company_approved')) return 4;
@@ -117,6 +122,28 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
         }
       }
       _checkAutoAdvance();
+
+      final prevStatus = _prevWsStatus;
+      final newStatus = _workspace?['status'] as String? ?? '';
+      if (newStatus == 'active' && prevStatus != 'active' && prevStatus.isNotEmpty) {
+        if (mounted) {
+          SchedulerBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).hideCurrentSnackBar();
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('تم تفعيل مساحة العمل'),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(10))),
+              duration: Duration(seconds: 3),
+            ));
+          });
+          Future.delayed(const Duration(milliseconds: 800), () {
+            if (mounted) context.go('/dashboard');
+          });
+        }
+      }
+      _prevWsStatus = _workspace?['status'] as String? ?? '';
     } catch (e) {
       _error = 'فشل تحميل البيانات';
     }
@@ -241,13 +268,11 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
         return _buildPaymentStage();
       case 5:
         return _buildWaitingStage(
-          icon: Icons.payment,
+          icon: Icons.hourglass_top,
           iconColor: ShadColors.warning,
-          title: 'بانتظار اعتماد الدفع',
-          subtitle: 'يقوم فريق الشركة بمراجعة إثبات الدفع',
+          title: 'جاري مراجعة الدفعة',
+          subtitle: 'في انتظار تفعيل مساحة العمل',
         );
-      case 6:
-        return _buildSuccessStage();
       default:
         return _buildSignatureStage();
     }
@@ -565,7 +590,7 @@ Text(
       final contracts = safeList(ws['contracts']);
       for (final c in contracts) {
         if (c is Map) {
-          totalAmount += (c['value'] as num? ?? 0).toDouble();
+          totalAmount += double.tryParse((c['value'] ?? '0').toString()) ?? 0.0;
         }
       }
     }
@@ -617,10 +642,7 @@ Text(
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () async {
-                await context.push('/workspaces/${ws?['id']}/payments');
-                _loadClientData();
-              },
+              onPressed: () => _showPaymentBottomSheet(totalAmount, ws?['id']),
               icon: const Icon(Icons.check_circle, size: 20),
               label: const Text('تأكيد الدفع'),
               style: ElevatedButton.styleFrom(
@@ -636,57 +658,252 @@ Text(
     );
   }
 
-  Widget _buildSuccessStage() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(
-              color: ShadColors.success.withAlpha(25),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Icon(Icons.check_circle, size: 36, color: ShadColors.success),
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'مساحة العمل جاهزة!',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay'),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'تم تفعيل مساحة العمل الخاصة بك بنجاح',
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'يمكنك الآن البدء في استخدام جميع الخدمات',
-            style: TextStyle(fontSize: 12, color: ShadColors.textDisabled),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                _loadClientData();
-              },
-              icon: const Icon(Icons.arrow_forward, size: 20),
-              label: const Text('الدخول إلى مساحة العمل'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: ShadColors.crimson,
-                foregroundColor: ShadColors.textOnCrimson,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  void _showPaymentBottomSheet(double suggestedAmount, int? workspaceId) {
+    const methodLabels = {
+      'bank_transfer': 'تحويل بنكي',
+      'swift': 'تحويل SWIFT',
+      'corporate_account': 'حساب الشركة',
+      'instapay': 'InstaPay',
+      'vodafone_cash': 'Vodafone Cash',
+      'mobile_wallet': 'محفظة إلكترونية',
+    };
+
+    const currencies = ['SAR', 'USD', 'EUR', 'AED', 'EGP', 'KWD', 'QAR', 'BHD', 'OMR'];
+    const currencyLabels = {
+      'SAR': 'ريال سعودي', 'USD': 'دولار أمريكي', 'EUR': 'يورو',
+      'AED': 'درهم إماراتي', 'EGP': 'جنيه مصري', 'KWD': 'دينار كويتي',
+      'QAR': 'ريال قطري', 'BHD': 'دينار بحريني', 'OMR': 'ريال عماني',
+    };
+
+    final amountCtrl = TextEditingController(text: suggestedAmount > 0 ? suggestedAmount.toStringAsFixed(0) : '');
+    final selectedCurrency = ValueNotifier<String>('SAR');
+    final selectedMethod = ValueNotifier<String>('bank_transfer');
+    List<Map<String, dynamic>> proofFiles = [];
+    final uploadingNotifier = ValueNotifier<bool>(false);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Text('طلب دفعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+            ]),
+            const SizedBox(height: 16),
+            ValueListenableBuilder<String>(
+              valueListenable: selectedCurrency,
+              builder: (_, cur, __) => TextField(
+                controller: amountCtrl,
+                decoration: InputDecoration(labelText: 'المبلغ *', hintText: '0.00', prefixText: '$cur '),
+                keyboardType: TextInputType.number,
               ),
             ),
-          ),
-        ]),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<String>(
+              valueListenable: selectedCurrency,
+              builder: (_, cur, __) => DropdownButtonFormField<String>(
+                initialValue: cur,
+                decoration: const InputDecoration(labelText: 'العملة'),
+                items: currencies.map((c) => DropdownMenuItem(
+                  value: c,
+                  child: Text('$c — ${currencyLabels[c] ?? ''}'),
+                )).toList(),
+                onChanged: (v) { if (v != null) selectedCurrency.value = v; },
+              ),
+            ),
+            const SizedBox(height: 12),
+            ValueListenableBuilder<String>(
+              valueListenable: selectedMethod,
+              builder: (_, val, __) => DropdownButtonFormField<String>(
+                initialValue: val,
+                decoration: const InputDecoration(labelText: 'طريقة الدفع'),
+                items: methodLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                onChanged: (v) { if (v != null) selectedMethod.value = v; },
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (proofFiles.isNotEmpty) ...[
+              SizedBox(
+                height: 100,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: proofFiles.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final pf = proofFiles[i];
+                    return Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          width: 80, height: 80,
+                          decoration: BoxDecoration(
+                            color: ShadColors.card,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: ShadColors.cardBorder),
+                          ),
+                          child: pf['bytes'] != null
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.memory(pf['bytes'] as Uint8List, fit: BoxFit.cover, width: 80, height: 80),
+                                )
+                              : Center(
+                                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                    const Icon(Icons.insert_drive_file, size: 24, color: ShadColors.textSecondary),
+                                    const SizedBox(height: 4),
+                                    Text(pf['name'] ?? '', style: const TextStyle(fontSize: 9, color: ShadColors.textDisabled), overflow: TextOverflow.ellipsis, maxLines: 2, textAlign: TextAlign.center),
+                                  ]),
+                                ),
+                        ),
+                        Positioned(
+                          right: -6, top: -6,
+                          child: GestureDetector(
+                            onTap: () {
+                              setSheetState(() { proofFiles.removeAt(i); });
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(color: ShadColors.error, shape: BoxShape.circle),
+                              child: const Icon(Icons.close, size: 12, color: Colors.white),
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 8),
+            ],
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
+                    if (r != null && r.files.isNotEmpty) {
+                      setSheetState(() {
+                        final f = r.files.first;
+                        if (kIsWeb) {
+                          proofFiles.add({'bytes': f.bytes, 'name': f.name});
+                        } else {
+                          proofFiles.add({'file': File(f.path!), 'name': f.name});
+                        }
+                      });
+                    }
+                  },
+                  icon: const Icon(Icons.upload_file, size: 18),
+                  label: const Text('إرفاق إثبات'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () async {
+                  final r = await ImagePicker().pickImage(source: ImageSource.camera);
+                  if (r != null) {
+                    setSheetState(() {
+                      if (kIsWeb) {
+                        r.readAsBytes().then((bytes) {
+                          setSheetState(() { proofFiles.add({'bytes': bytes, 'name': r.name}); });
+                        });
+                      } else {
+                        proofFiles.add({'file': File(r.path), 'name': r.name});
+                      }
+                    });
+                  }
+                },
+                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
+                child: const Icon(Icons.camera_alt, size: 18),
+              ),
+            ]),
+            const SizedBox(height: 20),
+            ValueListenableBuilder<bool>(
+              valueListenable: uploadingNotifier,
+              builder: (_, uploading, __) => SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: uploading ? null : () => _submitPaymentOnboarding(
+                    ctx, setSheetState, uploadingNotifier, workspaceId,
+                    amountCtrl, selectedCurrency.value, selectedMethod.value, proofFiles,
+                  ),
+                  child: uploading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('إرسال الدفعة'),
+                ),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }
+
+  Future<void> _submitPaymentOnboarding(
+    BuildContext ctx,
+    void Function(void Function()) setSheetState,
+    ValueNotifier<bool> uploadingNotifier,
+    int? workspaceId,
+    TextEditingController amountCtrl,
+    String currency,
+    String methodType,
+    List<Map<String, dynamic>> proofFiles,
+  ) async {
+    final amount = double.tryParse(amountCtrl.text);
+    if (amount == null || amount <= 0) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('يرجى إدخال مبلغ صحيح')));
+      return;
+    }
+    if (workspaceId == null) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('مساحة العمل غير متاحة')));
+      return;
+    }
+    uploadingNotifier.value = true;
+    setSheetState(() {});
+    try {
+      final fields = <String, dynamic>{
+        'amount': amount,
+        'currency': currency,
+        'method_type': methodType,
+      };
+
+      final nativeFiles = proofFiles.where((pf) => pf['file'] != null).map((pf) => pf['file'] as File).toList();
+      final bytesFiles = proofFiles.where((pf) => pf['bytes'] != null).map((pf) => pf['bytes'] as Uint8List).toList();
+      final bytesNames = proofFiles.where((pf) => pf['bytes'] != null).map((pf) => pf['name'] as String? ?? 'file.jpg').toList();
+
+      if (nativeFiles.isNotEmpty) {
+        await _api.multipartPost(
+          '/workspaces/$workspaceId/payments',
+          fields,
+          multipleFiles: nativeFiles,
+          multipleFileField: 'proof_files[]',
+        );
+      } else if (bytesFiles.isNotEmpty) {
+        await _api.multipartPost(
+          '/workspaces/$workspaceId/payments',
+          fields,
+          multipleBytes: bytesFiles,
+          multipleBytesNames: bytesNames,
+          multipleFileField: 'proof_files[]',
+        );
+      } else {
+        await _api.post('/workspaces/$workspaceId/payments', fields);
+      }
+
+      if (ctx.mounted) {
+        ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('✅ تم إرسال طلب الدفعة')));
+        Navigator.pop(ctx);
+      }
+      _loadClientData();
+    } catch (_) {
+      if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('فشل إرسال الدفعة')));
+    }
+    uploadingNotifier.value = false;
+    if (ctx.mounted) setSheetState(() {});
+  }
+
 }
 
 List safeList(dynamic value) {

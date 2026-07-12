@@ -25,6 +25,7 @@ class Payment extends Model
         return [
             'amount' => 'decimal:2',
             'currency' => 'string',
+            'proof_file_url' => 'array',
             'reviewed_at' => 'datetime',
         ];
     }

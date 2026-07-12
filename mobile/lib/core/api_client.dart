@@ -152,11 +152,26 @@ class ApiClient {
     return _handle(response);
   }
 
-  Future<Map<String, dynamic>> multipartPost(String path, Map<String, dynamic> fields, {File? file, Uint8List? bytes, String? filename, String fileField = 'file'}) async {
+  Future<Map<String, dynamic>> multipartPost(String path, Map<String, dynamic> fields,
+      {File? file, Uint8List? bytes, String? filename, String fileField = 'file',
+       List<File>? multipleFiles, String multipleFileField = 'files[]',
+       List<Uint8List>? multipleBytes, List<String>? multipleBytesNames}) async {
     final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
     request.headers.addAll(await _headers(multipart: true));
     fields.forEach((key, value) => request.fields[key] = value.toString());
-    if (bytes != null) {
+    if (multipleFiles != null) {
+      for (final f in multipleFiles) {
+        if (kIsWeb) {
+          throw UnsupportedError('multipleFiles not supported on web; use multipleBytes');
+        }
+        request.files.add(await http.MultipartFile.fromPath(multipleFileField, f.path));
+      }
+    } else if (multipleBytes != null) {
+      for (int i = 0; i < multipleBytes.length; i++) {
+        final fn = (multipleBytesNames != null && i < multipleBytesNames.length) ? multipleBytesNames[i] : null;
+        request.files.add(http.MultipartFile.fromBytes(multipleFileField, multipleBytes[i], filename: fn));
+      }
+    } else if (bytes != null) {
       request.files.add(http.MultipartFile.fromBytes(fileField, bytes, filename: filename));
     } else if (file != null) {
       if (kIsWeb) {

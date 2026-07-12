@@ -115,25 +115,31 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       ),
                     ),
                   ]),
-                  if (p['proof_url'] != null) ...[
+                  if (p['proof_file_url'] != null) ...[
                     const SizedBox(height: 8),
-                    InkWell(
-                      onTap: () async {
-                        final url = _api.resolveFileUrl(p['proof_url'] as String);
-                        final uri = Uri.tryParse(url);
-                        if (uri != null && await canLaunchUrl(uri)) {
-                          await launchUrl(uri, mode: LaunchMode.externalApplication);
-                        } else {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                        }
-                      },
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(Icons.visibility, size: 16, color: ShadColors.primary),
-                        const SizedBox(width: 4),
-                        Text('عرض إثبات الدفع', style: ShadTypography.cardBody.copyWith(color: ShadColors.primary, decoration: TextDecoration.underline)),
-                      ]),
-                    ),
+                    ...(() {
+                      final urls = (p['proof_file_url'] is List) ? (p['proof_file_url'] as List).cast<String>() : [p['proof_file_url'].toString()];
+                      return urls.map((url) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: InkWell(
+                          onTap: () async {
+                            final resolved = _api.resolveFileUrl(url);
+                            final uri = Uri.tryParse(resolved);
+                            if (uri != null && await canLaunchUrl(uri)) {
+                              await launchUrl(uri, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+                            }
+                          },
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Icon(Icons.visibility, size: 16, color: ShadColors.primary),
+                            const SizedBox(width: 4),
+                            Text('📎 إثبات الدفع', style: ShadTypography.cardBody.copyWith(color: ShadColors.primary, decoration: TextDecoration.underline)),
+                          ]),
+                        ),
+                      ));
+                    })(),
                   ],
                   if (p['status'] == 'pending') ...[
                     const SizedBox(height: 12),

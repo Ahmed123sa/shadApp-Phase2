@@ -61,11 +61,14 @@ class PaymentController extends Controller
         $client = $workspace->client;
         $methods = $client->client_type === 'individual' ? self::INDIVIDUAL_METHODS : self::BUSINESS_METHODS;
 
-        $proofFileUrl = null;
-        if ($request->hasFile('proof_file')) {
-            $path = $request->file('proof_file')->store('payment-proofs/workspace-' . $workspace->id, 'public');
-            $proofFileUrl = Storage::url($path);
+        $proofFileUrl = [];
+        if ($request->hasFile('proof_files')) {
+            foreach ($request->file('proof_files') as $file) {
+                $path = $file->store('payment-proofs/workspace-' . $workspace->id, 'public');
+                $proofFileUrl[] = Storage::url($path);
+            }
         }
+        $proofFileUrl = !empty($proofFileUrl) ? $proofFileUrl : null;
 
         // Auto-link to the latest company_approved or completed contract
         $lastContract = $workspace->contracts()
@@ -117,9 +120,13 @@ class PaymentController extends Controller
         if ($request->has('amount')) $payment->amount = $request->amount;
         if ($request->has('currency')) $payment->currency = $request->currency;
         if ($request->has('method_type')) $payment->method_type = $request->method_type;
-        if ($request->hasFile('proof_file')) {
-            $path = $request->file('proof_file')->store('payment-proofs/workspace-' . $workspace->id, 'public');
-            $payment->proof_file_url = Storage::url($path);
+        if ($request->hasFile('proof_files')) {
+            $proofFileUrl = [];
+            foreach ($request->file('proof_files') as $file) {
+                $path = $file->store('payment-proofs/workspace-' . $workspace->id, 'public');
+                $proofFileUrl[] = Storage::url($path);
+            }
+            $payment->proof_file_url = $proofFileUrl;
         }
         $payment->save();
 
