@@ -167,8 +167,6 @@ class _PaymentsPageState extends State<PaymentsPage> {
               _filterChip('مقبولة', 'approved'),
               const SizedBox(width: 8),
               _filterChip('معلّقة', 'pending'),
-              const SizedBox(width: 8),
-              _filterChip('مرفوضة', 'rejected'),
             ]),
             const SizedBox(height: 12),
 
