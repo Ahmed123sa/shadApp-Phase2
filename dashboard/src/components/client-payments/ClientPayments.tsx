@@ -227,33 +227,53 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         : payments.map((p, idx) => {
           const linkedContract = p.contract;
           const isPending = p.status === 'pending';
+          const isApproved = p.status === 'approved';
+          const statusColor = isApproved ? 'text-green-400' : isPending ? 'text-[var(--color-gold)]' : 'text-[var(--color-text-disabled)]';
+          const statusDot = isApproved ? 'bg-green-400' : isPending ? 'bg-[var(--color-gold)]' : 'bg-gray-500';
+          const statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p.status;
+
+          const proofUrl = p.proof_file_url ? `${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${p.proof_file_url.replace(/^\/?storage\//, '')}` : null;
+
           return (
-          <div key={p.id} className={`border rounded-lg p-4 flex justify-between items-center ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-[var(--color-gold)] font-medium">{installmentName(idx)}</span>
-                <p className="font-medium">{p.amount} {p.currency || 'SAR'}</p>
+          <div key={p.id} className={`border rounded-xl overflow-hidden ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
+            {/* ── القسم العلوي ── */}
+            <div className="px-5 pt-5 pb-4">
+              <p className="text-xs text-[var(--color-gold)] font-medium">{installmentName(idx)}</p>
+              <p className="text-2xl font-bold text-[var(--color-text-primary)] mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>{p.amount} <span className="text-sm font-normal text-[var(--color-text-disabled)]">{p.currency || 'SAR'}</span></p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></span>
+                <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
               </div>
-              <p className="text-xs text-[var(--color-text-disabled)]">{methodLabels[p.method_type] || p.method_type}</p>
-              {linkedContract && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">📄 {linkedContract.title}</p>}
-              {p.proof_file_url && (
-                <a href={`${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${p.proof_file_url.replace(/^\/?storage\//, '')}`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-[var(--color-gold)] hover:underline">📎 عرض الإثبات</a>
-              )}
             </div>
-            <div className="flex items-center gap-2">
-              {p.status === 'pending' && (
-                <button onClick={() => startEdit(p)}
-                  className="text-xs text-[var(--color-gold)] hover:underline">✏️ تعديل</button>
+
+            {/* ── الفاصل ── */}
+            <div className="h-px bg-[var(--color-card-border)]"></div>
+
+            {/* ── القسم السفلي ── */}
+            <div className="px-5 py-4 space-y-2">
+              {p.method_type && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">💳</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{methodLabels[p.method_type] || p.method_type}</span>
+                </div>
               )}
-              <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                p.status === 'approved' ? 'bg-green-900/30 text-green-400' :
-                p.status === 'rejected' ? 'bg-red-900/30 text-red-400' :
-                'bg-[var(--color-gold)]/20 text-[var(--color-gold)]'
-              }`}>
-                {p.status === 'approved' ? 'مقبول' : p.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
-              </span>
+              {linkedContract && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">📄</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{linkedContract.title}</span>
+                </div>
+              )}
+              {proofUrl && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">📎</span>
+                  <a href={proofUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] hover:underline">عرض إثبات الدفع</a>
+                </div>
+              )}
+              {isPending && (
+                <div className="pt-2">
+                  <button onClick={() => startEdit(p)} className="w-full text-sm text-[var(--color-gold)] hover:underline font-medium">✏️ تعديل</button>
+                </div>
+              )}
             </div>
           </div>
           );

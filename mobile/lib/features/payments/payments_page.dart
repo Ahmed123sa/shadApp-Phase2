@@ -461,44 +461,69 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   Widget _paymentCard(dynamic p, int index) {
-    final statusColors = {'pending': ShadColors.gold, 'approved': ShadColors.success, 'rejected': ShadColors.error};
-    final sc = statusColors[p['status']] ?? ShadColors.textDisabled;
     final isPending = p['status'] == 'pending';
+    final isApproved = p['status'] == 'approved';
+    final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : ShadColors.textDisabled;
+    final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p['status'] ?? '';
+
+    final methodLabels = {'bank_transfer': 'تحويل بنكي', 'swift': 'SWIFT', 'corporate_account': 'حساب شركة', 'instapay': 'Instapay', 'vodafone_cash': 'فودافون كاش', 'mobile_wallet': 'محفظة موبايل'};
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: ShadColors.card,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: isPending ? ShadColors.gold : ShadColors.cardBorder, width: isPending ? 1.5 : 0.5),
       ),
-      child: Row(children: [
-        Container(
-          width: 40, height: 40,
-          decoration: BoxDecoration(color: sc.withAlpha(25), borderRadius: BorderRadius.circular(10)),
-          child: Icon(
-            p['status'] == 'approved' ? Icons.check_circle : p['status'] == 'rejected' ? Icons.cancel : Icons.hourglass_empty,
-            color: sc, size: 20,
-          ),
+      child: Column(children: [
+        // ── القسم العلوي: رقم الدفعة + المبلغ + الحالة ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_installmentLabel(index), style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600, fontFamily: 'NotoSansArabic')),
+                const SizedBox(height: 4),
+                Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                  const SizedBox(width: 6),
+                  Text(statusText, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w500, fontFamily: 'NotoSansArabic')),
+                ]),
+              ]),
+            ),
+          ]),
         ),
-        const SizedBox(width: 12),
-        Expanded(
+
+        // ── الفاصل ──
+        Divider(height: 1, color: ShadColors.cardBorder),
+
+        // ── القسم السفلي: طريقة الدفع + العقد + الإثبات ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Text(_installmentLabel(index), style: TextStyle(fontSize: 10, color: ShadColors.gold, fontWeight: FontWeight.w600)),
-              const SizedBox(width: 8),
-              Expanded(child: Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
-            ]),
-            Text(p['method_type'] ?? '', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-            if (p['contract'] is Map && p['contract']['title'] != null) ...[
-              const SizedBox(height: 2),
-              Text('📄 ${p['contract']['title']}', style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
-            ],
+            if ((p['method_type'] ?? '').isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Text('💳 ', style: TextStyle(fontSize: 12, fontFamily: 'NotoSansArabic')),
+                  Text(methodLabels[p['method_type']] ?? p['method_type'] ?? '', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+                ]),
+              ),
+            if (p['contract'] is Map && p['contract']['title'] != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(children: [
+                  Text('📄 ', style: TextStyle(fontSize: 12, fontFamily: 'NotoSansArabic')),
+                  Text(p['contract']['title'], style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+                ]),
+              ),
             if (p['proof_file_url'] != null)
               ...(() {
                 final urls = (p['proof_file_url'] is List) ? (p['proof_file_url'] as List).cast<String>() : [p['proof_file_url'].toString()];
                 return urls.map((url) => Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
+                  padding: const EdgeInsets.only(bottom: 4),
                   child: InkWell(
                     onTap: () async {
                       final resolved = _api.resolveFileUrl(url);
@@ -510,19 +535,14 @@ class _PaymentsPageState extends State<PaymentsPage> {
                         messenger.showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
                       }
                     },
-                    child: Text('📎 إثبات الدفع', style: TextStyle(fontSize: 10, color: ShadColors.primary, fontFamily: 'NotoSansArabic', decoration: TextDecoration.underline)),
+                    child: Row(children: [
+                      Text('📎 ', style: TextStyle(fontSize: 12, fontFamily: 'NotoSansArabic')),
+                      Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.primary, fontFamily: 'NotoSansArabic', decoration: TextDecoration.underline)),
+                    ]),
                   ),
                 ));
               })(),
           ]),
-        ),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(color: sc.withAlpha(25), borderRadius: BorderRadius.circular(20)),
-          child: Text(
-            statusLabels[p['status']] ?? p['status'] ?? '',
-            style: TextStyle(fontSize: 10, color: sc, fontWeight: FontWeight.w500, fontFamily: 'Archivo'),
-          ),
         ),
       ]),
     );

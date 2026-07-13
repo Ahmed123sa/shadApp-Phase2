@@ -98,29 +98,57 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
 
       <p className="text-xs text-[var(--color-text-disabled)]">نسبة العميل: {client?.client_type === 'individual' ? 'فردي' : 'شركة'}</p>
       {payments.length === 0 ? <EmptyState message="لا توجد مدفوعات" /> : null}
-      {payments.map((p, idx) => (
-        <div key={p.id} className="border border-[var(--color-card-border)] rounded-lg p-4 flex justify-between items-center">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-[var(--color-gold)] font-medium">{installmentName(idx)}</span>
-              <span className="font-medium">{p.amount} {p.currency || contractCurrency}</span>
-            </div>
-            <span className="text-xs text-[var(--color-text-disabled)] mr-3">{methodLabels[p.method_type] || p.method_type}</span>
-            {p.contract?.title && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">📄 {p.contract.title}</p>}
-            {p.proof_file_url && <a href={resolveFileUrl(p.proof_file_url)} target="_blank" className="text-xs text-blue-500 mr-2 hover:underline">📎 الإثبات</a>}
-          </div>
-          <div className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded-full text-xs ${p.status === 'approved' ? 'bg-green-900/30 text-green-400' : p.status === 'rejected' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
-              {p.status === 'approved' ? 'مقبول' : p.status === 'rejected' ? 'مرفوض' : 'معلق'}
-            </span>
-            {p.status === 'pending' && canReview && (
-              <div className="flex gap-1">
-                <button onClick={() => reviewPayment(p.id, 'approved')} className="text-xs bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700">قبول</button>
+      {payments.map((p, idx) => {
+        const isPending = p.status === 'pending';
+        const isApproved = p.status === 'approved';
+        const statusColor = isApproved ? 'text-green-400' : isPending ? 'text-yellow-400' : 'text-[var(--color-text-disabled)]';
+        const statusDot = isApproved ? 'bg-green-400' : isPending ? 'bg-yellow-400' : 'bg-gray-500';
+        const statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p.status;
+
+        return (
+          <div key={p.id} className={`border rounded-xl overflow-hidden ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
+            {/* ── القسم العلوي ── */}
+            <div className="px-5 pt-5 pb-4">
+              <p className="text-xs text-[var(--color-gold)] font-medium">{installmentName(idx)}</p>
+              <p className="text-2xl font-bold text-[var(--color-text-primary)] mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>{p.amount} <span className="text-sm font-normal text-[var(--color-text-disabled)]">{p.currency || contractCurrency}</span></p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></span>
+                <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
               </div>
-            )}
+            </div>
+
+            {/* ── الفاصل ── */}
+            <div className="h-px bg-[var(--color-card-border)]"></div>
+
+            {/* ── القسم السفلي ── */}
+            <div className="px-5 py-4 space-y-2">
+              {p.method_type && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">💳</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{methodLabels[p.method_type] || p.method_type}</span>
+                </div>
+              )}
+              {p.contract?.title && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">📄</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{p.contract.title}</span>
+                </div>
+              )}
+              {p.proof_file_url && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">📎</span>
+                  <a href={resolveFileUrl(p.proof_file_url)} target="_blank" className="text-xs text-[var(--color-gold)] hover:underline">عرض إثبات الدفع</a>
+                </div>
+              )}
+              {isPending && canReview && (
+                <div className="pt-2">
+                  <button onClick={() => reviewPayment(p.id, 'approved')} className="w-full text-sm bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 font-medium">اعتماد</button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

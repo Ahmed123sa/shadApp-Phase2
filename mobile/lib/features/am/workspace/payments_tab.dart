@@ -156,86 +156,100 @@ class _PaymentsTabState extends State<PaymentsTab> {
             );
           }
           final p = _payments[i - 1];
-          final statusColors = {'pending': ShadColors.warning, 'approved': ShadColors.success, 'rejected': ShadColors.error};
-          return Card(
-            margin: const EdgeInsets.only(bottom: 12),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(children: [
-                    CircleAvatar(
-                      backgroundColor: (statusColors[p['status']] ?? ShadColors.textDisabled).withAlpha(25),
-                      child: Icon(
-                        p['status'] == 'approved' ? Icons.check_circle : p['status'] == 'rejected' ? Icons.cancel : Icons.hourglass_empty,
-                        color: statusColors[p['status']] ?? ShadColors.textDisabled,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Row(children: [
-                          Text(_installmentLabel(i - 1), style: TextStyle(fontSize: 10, color: ShadColors.gold, fontWeight: FontWeight.w600)),
-                          const SizedBox(width: 6),
-                          Expanded(child: Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'ر.س'}', style: ShadTypography.cardTitle)),
-                        ]),
-                        Text(p['method_type'] ?? '', style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
-                        if (p['contract'] is Map && p['contract']['title'] != null)
-                          Text('📄 ${p['contract']['title']}', style: ShadTypography.caption.copyWith(color: ShadColors.textDisabled)),
-                      ]),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: (statusColors[p['status']] ?? ShadColors.textDisabled).withAlpha(25),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        statusLabels[p['status']] ?? p['status'] ?? '',
-                        style: ShadTypography.caption.copyWith(color: statusColors[p['status']] ?? ShadColors.textDisabled),
-                      ),
-                    ),
-                  ]),
-                  if (p['proof_file_url'] != null) ...[
-                    const SizedBox(height: 8),
-                    ...(() {
-                      final urls = (p['proof_file_url'] is List) ? (p['proof_file_url'] as List).cast<String>() : [p['proof_file_url'].toString()];
-                      return urls.map((url) => Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: InkWell(
-                          onTap: () async {
-                            final resolved = _api.resolveFileUrl(url);
-                            final uri = Uri.tryParse(resolved);
-                            if (uri != null && await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            } else {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                            }
-                          },
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            Icon(Icons.visibility, size: 16, color: ShadColors.primary),
-                            const SizedBox(width: 4),
-                            Text('📎 إثبات الدفع', style: ShadTypography.cardBody.copyWith(color: ShadColors.primary, decoration: TextDecoration.underline)),
-                          ]),
-                        ),
-                      ));
-                    })(),
-                  ],
-                  if (p['status'] == 'pending') ...[
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      Expanded(child: ElevatedButton(
-                        onPressed: () => _review(p['id']),
-                        style: ElevatedButton.styleFrom(backgroundColor: ShadColors.success),
-                        child: const Text('اعتماد'),
-                      )),
+          final isPending = p['status'] == 'pending';
+          final isApproved = p['status'] == 'approved';
+          final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : ShadColors.textDisabled;
+          final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p['status'] ?? '';
 
+          final methodLabels = {'bank_transfer': 'تحويل بنكي', 'swift': 'SWIFT', 'corporate_account': 'حساب شركة', 'instapay': 'Instapay', 'vodafone_cash': 'فودافون كاش', 'mobile_wallet': 'محفظة موبايل'};
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            decoration: BoxDecoration(
+              color: ShadColors.card,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: isPending ? ShadColors.gold : ShadColors.cardBorder, width: isPending ? 1.5 : 0.5),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── القسم العلوي ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(_installmentLabel(i - 1), style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 4),
+                    Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'SAR'}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Container(width: 6, height: 6, decoration: BoxDecoration(color: statusColor, shape: BoxShape.circle)),
+                      const SizedBox(width: 6),
+                      Text(statusText, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w500)),
                     ]),
-                  ],
-                ],
-              ),
+                  ]),
+                ),
+
+                // ── الفاصل ──
+                Divider(height: 1, color: ShadColors.cardBorder),
+
+                // ── القسم السفلي ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    if ((p['method_type'] ?? '').isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(children: [
+                          Text('💳 ', style: TextStyle(fontSize: 12)),
+                          Text(methodLabels[p['method_type']] ?? p['method_type'] ?? '', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+                        ]),
+                      ),
+                    if (p['contract'] is Map && p['contract']['title'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(children: [
+                          Text('📄 ', style: TextStyle(fontSize: 12)),
+                          Text(p['contract']['title'], style: TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+                        ]),
+                      ),
+                    if (p['proof_file_url'] != null)
+                      ...(() {
+                        final urls = (p['proof_file_url'] is List) ? (p['proof_file_url'] as List).cast<String>() : [p['proof_file_url'].toString()];
+                        return urls.map((url) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: InkWell(
+                            onTap: () async {
+                              final resolved = _api.resolveFileUrl(url);
+                              final uri = Uri.tryParse(resolved);
+                              if (uri != null && await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              } else {
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+                              }
+                            },
+                            child: Row(children: [
+                              Text('📎 ', style: TextStyle(fontSize: 12)),
+                              Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.primary, decoration: TextDecoration.underline)),
+                            ]),
+                          ),
+                        ));
+                      })(),
+                    // ── زر الاعتماد (للـ AM بس) ──
+                    if (isPending) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () => _review(p['id']),
+                          style: ElevatedButton.styleFrom(backgroundColor: ShadColors.success),
+                          child: const Text('اعتماد'),
+                        ),
+                      ),
+                    ],
+                  ]),
+                ),
+              ],
             ),
           );
         },
