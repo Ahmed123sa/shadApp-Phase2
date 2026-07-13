@@ -54,15 +54,22 @@ class _PaymentsPageState extends State<PaymentsPage> {
         .fold<double>(0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
   }
 
+  String get _contractCurrency {
+    final contract = _suggestedContract;
+    return (contract?['currency'] as String?) ?? 'SAR';
+  }
+
   double get _grandTotal {
-    if (_payments.isNotEmpty) {
-      return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
-    }
     final contract = _suggestedContract;
     if (contract != null) {
       return num.tryParse(contract['value']?.toString() ?? '')?.toDouble() ?? 0;
     }
-    return 0;
+    return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+  }
+
+  String _installmentLabel(int index) {
+    const labels = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
+    return index < labels.length ? 'دفعة ${labels[index]}' : 'دفعة ${index + 1}';
   }
 
   Future<void> _load() async {
@@ -78,7 +85,8 @@ class _PaymentsPageState extends State<PaymentsPage> {
       final contractsData = results[1];
       _payments = safeList(paymentsData['payments']);
       _availableMethods = (paymentsData['available_methods'] as List<dynamic>?)?.cast<String>() ?? [];
-      _contracts = safeList(contractsData['contracts']);
+      final rawContracts = contractsData['contracts'];
+      _contracts = rawContracts is List ? rawContracts : (rawContracts is Map ? (rawContracts['data'] ?? []) as List : []);
     } catch (_) {
       _error = 'فشل تحميل المدفوعات';
     }
@@ -103,8 +111,9 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
 
     final grandTotal = _grandTotal;
-    final pendingCount = _payments.where((p) => p['status'] == 'pending').length;
-    final progress = grandTotal > 0 ? _totalPaid / grandTotal : 0.0;
+    final contractCur = _contractCurrency;
+    final progress = grandTotal > 0 ? (_totalPaid / grandTotal).clamp(0.0, 1.0) : 0.0;
+    final isFullyPaid = _totalPaid >= grandTotal && grandTotal > 0;
 
     return Scaffold(
       floatingActionButton: FloatingActionButton(
@@ -125,13 +134,20 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 border: Border.all(color: ShadColors.cardBorder),
               ),
               child: Column(children: [
-                Text('إجمالي المدفوع', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
-                const SizedBox(height: 8),
-                Text('${_totalPaid.toStringAsFixed(2)} ${_payments.isNotEmpty ? _currency(_payments.first) : 'SAR'}',
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-                const SizedBox(height: 4),
-                Text('من أصل $grandTotal SAR — $pendingCount دفعات معلّقة',
-                  style: TextStyle(fontSize: 11, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
+                if (isFullyPaid) ...[
+                  const Icon(Icons.check_circle, size: 32, color: ShadColors.success),
+                  const SizedBox(height: 8),
+                  const Text('تم الدفع بالكامل', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ShadColors.success, fontFamily: 'NotoSansArabic')),
+                  const SizedBox(height: 4),
+                  Text('${_totalPaid.toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                ] else ...[
+                  Text('إجمالي المدفوع', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
+                  const SizedBox(height: 8),
+                  Text('${_totalPaid.toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                  const SizedBox(height: 4),
+                  Text('من أصل ${grandTotal.toStringAsFixed(2)} $contractCur — متبقي ${(grandTotal - _totalPaid).toStringAsFixed(2)}',
+                    style: TextStyle(fontSize: 11, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
+                ],
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(4),
@@ -139,7 +155,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                     value: progress,
                     minHeight: 6,
                     backgroundColor: ShadColors.cardBorder,
-                    valueColor: const AlwaysStoppedAnimation(ShadColors.gold),
+                    valueColor: AlwaysStoppedAnimation(isFullyPaid ? ShadColors.success : ShadColors.gold),
                   ),
                 ),
               ]),
@@ -167,7 +183,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 ]),
               )
             else
-              ..._filteredPayments.map((p) => _paymentCard(p)),
+              ..._filteredPayments.asMap().entries.map((entry) => _paymentCard(entry.value, entry.key)),
           ],
         ),
       ),
@@ -445,7 +461,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (ctx.mounted) setSheetState(() {});
   }
 
-  Widget _paymentCard(dynamic p) {
+  Widget _paymentCard(dynamic p, int index) {
     final statusColors = {'pending': ShadColors.gold, 'approved': ShadColors.success, 'rejected': ShadColors.error};
     final sc = statusColors[p['status']] ?? ShadColors.textDisabled;
     final isPending = p['status'] == 'pending';
@@ -469,7 +485,11 @@ class _PaymentsPageState extends State<PaymentsPage> {
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+            Row(children: [
+              Text(_installmentLabel(index), style: TextStyle(fontSize: 10, color: ShadColors.gold, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 8),
+              Expanded(child: Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
+            ]),
             Text(p['method_type'] ?? '', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
             if (p['contract_title'] != null) ...[
               const SizedBox(height: 2),

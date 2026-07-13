@@ -17,6 +17,7 @@ class PaymentsTab extends StatefulWidget {
 class _PaymentsTabState extends State<PaymentsTab> {
   final _api = ApiClient();
   List<dynamic> _payments = [];
+  List<dynamic> _contracts = [];
   bool _loading = true;
   String? _error;
 
@@ -31,12 +32,48 @@ class _PaymentsTabState extends State<PaymentsTab> {
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await _api.get('/workspaces/$wsId/payments');
-      _payments = data['payments'] as List<dynamic>? ?? [];
+      final results = await Future.wait<Map<String, dynamic>>([
+        _api.get('/workspaces/$wsId/payments'),
+        _api.get('/workspaces/$wsId/contracts'),
+      ]);
+      _payments = (results[0]['payments'] as List<dynamic>?) ?? [];
+      final rawContracts = results[1]['contracts'];
+      _contracts = rawContracts is List ? rawContracts : (rawContracts is Map ? (rawContracts['data'] ?? []) as List : []);
     } catch (_) {
       _error = 'فشل تحميل المدفوعات';
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  Map<String, dynamic>? get _suggestedContract {
+    return _contracts.cast<Map<String, dynamic>?>().firstWhere(
+      (c) => c?['status'] == 'company_approved' || c?['status'] == 'completed',
+      orElse: () => null,
+    );
+  }
+
+  double get _totalPaid {
+    return _payments
+        .where((p) => p['status'] == 'approved')
+        .fold<double>(0, (sum, p) => sum + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+  }
+
+  double get _grandTotal {
+    final contract = _suggestedContract;
+    if (contract != null) {
+      return num.tryParse(contract['value']?.toString() ?? '')?.toDouble() ?? 0;
+    }
+    return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
+  }
+
+  String get _contractCurrency {
+    final contract = _suggestedContract;
+    return (contract?['currency'] as String?) ?? 'SAR';
+  }
+
+  String _installmentLabel(int index) {
+    const labels = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
+    return index < labels.length ? 'دفعة ${labels[index]}' : 'دفعة ${index + 1}';
   }
 
   Future<void> _review(int id) async {
@@ -77,9 +114,49 @@ class _PaymentsTabState extends State<PaymentsTab> {
       onRefresh: _load,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: _payments.length,
+        itemCount: _payments.length + 1,
         itemBuilder: (_, i) {
-          final p = _payments[i];
+          if (i == 0) {
+            final grandTotal = _grandTotal;
+            final contractCur = _contractCurrency;
+            final progress = grandTotal > 0 ? (_totalPaid / grandTotal).clamp(0.0, 1.0) : 0.0;
+            final isFullyPaid = _totalPaid >= grandTotal && grandTotal > 0;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0D0D0D),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
+              ),
+              child: Column(children: [
+                if (isFullyPaid) ...[
+                  const Icon(Icons.check_circle, size: 28, color: ShadColors.success),
+                  const SizedBox(height: 6),
+                  const Text('تم الدفع بالكامل', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.success)),
+                  const SizedBox(height: 4),
+                  Text('${_totalPaid.toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                ] else ...[
+                  Text('إجمالي المدفوع', style: TextStyle(fontSize: 12, color: ShadColors.gold)),
+                  const SizedBox(height: 6),
+                  Text('${_totalPaid.toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                  const SizedBox(height: 4),
+                  Text('من أصل ${grandTotal.toStringAsFixed(2)} $contractCur — متبقي ${(grandTotal - _totalPaid).toStringAsFixed(2)}', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+                ],
+                const SizedBox(height: 10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: ShadColors.cardBorder,
+                    valueColor: AlwaysStoppedAnimation(isFullyPaid ? ShadColors.success : ShadColors.gold),
+                  ),
+                ),
+              ]),
+            );
+          }
+          final p = _payments[i - 1];
           final statusColors = {'pending': ShadColors.warning, 'approved': ShadColors.success, 'rejected': ShadColors.error};
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
@@ -99,7 +176,11 @@ class _PaymentsTabState extends State<PaymentsTab> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'ر.س'}', style: ShadTypography.cardTitle),
+                        Row(children: [
+                          Text(_installmentLabel(i - 1), style: TextStyle(fontSize: 10, color: ShadColors.gold, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 6),
+                          Expanded(child: Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'ر.س'}', style: ShadTypography.cardTitle)),
+                        ]),
                         Text(p['method_type'] ?? '', style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
                       ]),
                     ),
@@ -160,4 +241,9 @@ class _PaymentsTabState extends State<PaymentsTab> {
       ),
     );
   }
+}
+
+List safeList(dynamic value) {
+  if (value is List) return value;
+  return [];
 }

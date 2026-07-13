@@ -100,17 +100,47 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
   const pendingPayment = payments.find((p) => p.status === 'pending');
   const showPaymentForm = pendingPayment || payableContract;
 
+  const approvedPayments = payments.filter(p => p.status === 'approved');
+  const totalPaid = approvedPayments.reduce((s, p) => s + Number(p.amount), 0);
+  const grandTotal = payableContract ? Number(payableContract.value) : payments.reduce((s, p) => s + Number(p.amount), 0);
+  const contractCurrency = payableContract?.currency || 'SAR';
+  const remaining = grandTotal - totalPaid;
+  const isFullyPaid = totalPaid >= grandTotal && grandTotal > 0;
+  const progress = grandTotal > 0 ? Math.min(totalPaid / grandTotal, 1) : 0;
+
+  const installmentLabels = ['الأولى', 'الثانية', 'الثالثة', 'الرابعة', 'الخامسة', 'السادسة', 'السابعة', 'الثامنة', 'التاسعة', 'العاشرة'];
+  const installmentName = (i: number) => i < installmentLabels.length ? `دفعة ${installmentLabels[i]}` : `دفعة ${i + 1}`;
+
   return (
     <div className="space-y-3">
       {/* إجمالي المدفوع */}
       <div className="bg-[#0d0d0d] border border-[var(--color-card-border)] rounded-xl p-4">
-        <p className="text-xs text-[var(--color-gold)] font-medium">إجمالي المدفوع</p>
-        <p className="text-2xl font-bold text-[var(--color-gold)] mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>
-          {payments.filter(p => p.status === 'approved').reduce((s, p) => s + Number(p.amount), 0).toFixed(2)} SAR
-        </p>
-        <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
-          من أصل {payments.reduce((s, p) => s + Number(p.amount), 0).toFixed(2)} SAR
-        </p>
+        {isFullyPaid ? (
+          <>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[var(--color-success)] text-lg">✅</span>
+              <p className="text-sm font-bold text-[var(--color-success)]">تم الدفع بالكامل</p>
+            </div>
+            <p className="text-2xl font-bold text-[var(--color-gold)]" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {totalPaid.toFixed(2)} {contractCurrency}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-xs text-[var(--color-gold)] font-medium">إجمالي المدفوع</p>
+            <p className="text-2xl font-bold text-[var(--color-gold)] mt-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+              {totalPaid.toFixed(2)} {contractCurrency}
+            </p>
+            <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
+              من أصل {grandTotal.toFixed(2)} {contractCurrency} — متبقي {remaining.toFixed(2)}
+            </p>
+          </>
+        )}
+        <div className="mt-3">
+          <div className="w-full h-1.5 bg-[var(--color-card-border)] rounded-full overflow-hidden">
+            <div className={`h-full rounded-full transition-all ${isFullyPaid ? 'bg-[var(--color-success)]' : 'bg-[var(--color-gold)]'}`} style={{ width: `${progress * 100}%` }} />
+          </div>
+        </div>
       </div>
 
       {/* طرق الدفع المتاحة */}
@@ -192,13 +222,16 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
       {/* قائمة المدفوعات السابقة أو رسالة عدم وجود مدفوعات */}
       {payments.length === 0 && !pendingPayment && !payableContract
         ? <EmptyState message="لا توجد مدفوعات" />
-        : payments.map((p) => {
+        : payments.map((p, idx) => {
           const linkedContract = p.contract;
           const isPending = p.status === 'pending';
           return (
           <div key={p.id} className={`border rounded-lg p-4 flex justify-between items-center ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
             <div>
-              <p className="font-medium">{p.amount} ر.س</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-[var(--color-gold)] font-medium">{installmentName(idx)}</span>
+                <p className="font-medium">{p.amount} {p.currency || 'SAR'}</p>
+              </div>
               <p className="text-xs text-[var(--color-text-disabled)]">{methodLabels[p.method_type] || p.method_type}</p>
               {linkedContract && <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">📄 {linkedContract.title}</p>}
               {p.proof_file_url && (
