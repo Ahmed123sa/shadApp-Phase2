@@ -12,6 +12,7 @@ class ContractDetailModal extends StatefulWidget {
   final VoidCallback onRefresh;
   final VoidCallback? onGoToPayments;
   final String backLabel;
+  final int? workspaceId;
 
   const ContractDetailModal({
     super.key,
@@ -20,6 +21,7 @@ class ContractDetailModal extends StatefulWidget {
     required this.onRefresh,
     this.onGoToPayments,
     this.backLabel = 'كل العقود',
+    this.workspaceId,
   });
 
   @override
@@ -45,7 +47,7 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
     final existingReqDocs = widget.contract['required_documents'] as List<dynamic>?;
     if ((existingClauses?.isNotEmpty == true) || (existingReqDocs?.isNotEmpty == true)) return;
 
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     try {
       final data = await _api.get('/workspaces/$wsId/contracts');
@@ -62,7 +64,7 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
   }
 
   Future<void> _loadUploadedFiles() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() => _loadingFiles = true);
     try {
@@ -82,7 +84,7 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
     );
     if (result == null || result.files.isEmpty) return;
     final pf = result.files.single;
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
 
     setState(() => _uploading = true);
@@ -281,7 +283,10 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
             ] else if (_uploadedFiles.isNotEmpty) ...[
               Text('الملفات المرفوعة', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
               const SizedBox(height: 8),
-              ..._uploadedFiles.map((f) => Container(
+              ..._uploadedFiles.map((f) {
+                final fStatus = f['status'] as String? ?? '';
+                final canDelete = fStatus != 'approved';
+                return Container(
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
@@ -300,18 +305,26 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: (f['status'] as String?) == 'approved'
+                      color: fStatus == 'approved'
                           ? ShadColors.success.withAlpha(25)
                           : ShadColors.warning.withAlpha(25),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
-                      statusLabels[f['status'] as String? ?? ''] ?? f['status'] ?? '',
-                      style: TextStyle(fontSize: 9, color: (f['status'] as String?) == 'approved' ? ShadColors.success : ShadColors.warning),
+                      statusLabels[fStatus] ?? fStatus,
+                      style: TextStyle(fontSize: 9, color: fStatus == 'approved' ? ShadColors.success : ShadColors.warning),
                     ),
                   ),
+                  if (canDelete) ...[
+                    const SizedBox(width: 6),
+                    GestureDetector(
+                      onTap: () => _deleteFile(f),
+                      child: const Icon(Icons.close, size: 16, color: ShadColors.error),
+                    ),
+                  ],
                 ]),
-              )),
+              );
+              }),
               const SizedBox(height: 16),
             ],
 
@@ -497,6 +510,37 @@ class _ContractDetailModalState extends State<ContractDetailModal> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('رابط الملف غير صالح')));
       }
+    }
+  }
+
+  Future<void> _deleteFile(dynamic file) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الملف'),
+        content: Text('هل تريد حذف "${file['name'] ?? ''}"؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error, foregroundColor: Colors.white),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final wsId = widget.workspaceId ?? _api.workspaceId;
+    if (wsId == null) return;
+
+    try {
+      await _api.delete('/workspaces/$wsId/files/${file['id']}');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الملف')));
+      await _loadUploadedFiles();
+      widget.onRefresh();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل حذف الملف: $e')));
     }
   }
 }

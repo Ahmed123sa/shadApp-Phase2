@@ -53,6 +53,7 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
     // Files — client needs to upload/download too
     Route::get('/workspaces/{workspace}/files', [FileController::class, 'index']);
     Route::post('/workspaces/{workspace}/files', [FileController::class, 'upload']);
+    Route::delete('/workspaces/{workspace}/files/{file}', [FileController::class, 'destroy']);
     Route::get('/contracts/{contract}/required-documents', [ContractController::class, 'requiredDocuments']);
     Route::get('/contracts/{contract}/files', [ContractController::class, 'files']);
 });

@@ -8,12 +8,12 @@ import 'package:go_router/go_router.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/locale_provider.dart';
 import '../../core/reverb_service.dart';
 import '../../core/widgets/shad_logo.dart';
+import '../contracts/contract_detail_modal.dart';
 
 class ClientOnboardingScreen extends StatefulWidget {
   const ClientOnboardingScreen({super.key});
@@ -211,6 +211,8 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
         child: Column(
           children: [
             _buildHeader(stage),
+            _buildOnboardingProgress(stage),
+            const SizedBox(height: 8),
             Expanded(child: _buildStageScreen(stage)),
           ],
         ),
@@ -238,6 +240,67 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
             icon: const Icon(Icons.logout_rounded, size: 22),
             onPressed: _logout,
             tooltip: 'تسجيل الخروج',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOnboardingProgress(int stage) {
+    const labels = [
+      'التوقيع',
+      'استلام العقد',
+      'موافقتك',
+      'اعتماد الشركة',
+      'إثبات الدفع',
+      'تفعيل المساحة',
+    ];
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          Row(
+            children: List.generate(6, (i) {
+              final done = i < stage;
+              final current = i == stage;
+              return Expanded(
+                child: Container(
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    color: done
+                        ? ShadColors.crimson
+                        : current
+                            ? ShadColors.gold
+                            : const Color(0xFF2A2A2A),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              );
+            }),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: List.generate(6, (i) {
+              final done = i < stage;
+              final current = i == stage;
+              return Expanded(
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: done
+                        ? ShadColors.crimson
+                        : current
+                            ? ShadColors.gold
+                            : ShadColors.textDisabled,
+                    fontWeight: current ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -454,90 +517,22 @@ Text(
   }
 
   void _showContractModal(Map c) {
-    final status = c['status'] as String? ?? '';
-    final needsAction = status == 'sent';
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => Padding(
-        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 24),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(c['title'] ?? '', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-                  const SizedBox(height: 4),
-                  Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-                ]),
-              ),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-            ]),
-            const SizedBox(height: 16),
-            if (c['value'] != null)
-              Text('${c['value']} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-            const SizedBox(height: 8),
-            if (c['start_date'] != null)
-              Text('تاريخ البداية: ${(c['start_date'] as String).split('T')[0]}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-            if (c['end_date'] != null)
-              Text('تاريخ الإنتهاء: ${(c['end_date'] as String).split('T')[0]}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-            const SizedBox(height: 16),
-            if (c['pdf_url'] != null) ...[
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    final url = _api.resolveFileUrl(c['pdf_url'] as String);
-                    final uri = Uri.tryParse(url);
-                    if (uri != null) launchUrl(uri, mode: LaunchMode.externalApplication);
-                  },
-                  icon: const Icon(Icons.picture_as_pdf, size: 18),
-                  label: const Text('تحميل العقد (PDF)'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ShadColors.gold,
-                    side: const BorderSide(color: ShadColors.gold),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (needsAction) ...[
-              Row(children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () { Navigator.pop(context); _respondToContract('approved'); },
-                    icon: const Icon(Icons.check, size: 18),
-                    label: const Text('موافقة'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ShadColors.success,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () { Navigator.pop(context); _respondToContract('edit_requested'); },
-                    icon: const Icon(Icons.edit, size: 18),
-                    label: const Text('تعديل'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: ShadColors.warning,
-                      side: const BorderSide(color: ShadColors.warning),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                    ),
-                  ),
-                ),
-              ]),
-            ],
-          ],
-        ),
+      builder: (_) => ContractDetailModal(
+        contract: c,
+        workspaceId: _workspace?['id'] as int?,
+        backLabel: 'العودة',
+        onAction: (id, action) async {
+          Navigator.pop(context);
+          await _respondToContractById(id, action);
+        },
+        onRefresh: () {
+          _loadClientData();
+          _contractRefreshNotifier.value++;
+        },
       ),
     );
   }
@@ -548,7 +543,10 @@ Text(
     final contracts = safeList(ws['contracts']);
     if (contracts.isEmpty) return;
     final c = contracts.first as Map;
-    final contractId = c['id'];
+    await _respondToContractById(c['id'] as int, action);
+  }
+
+  Future<void> _respondToContractById(dynamic contractId, String action) async {
     String? reason;
     if (action == 'edit_requested') {
       final controller = TextEditingController();
@@ -570,6 +568,7 @@ Text(
       if (reason != null && reason.isNotEmpty) body['reason'] = reason;
       await _api.post('/contracts/$contractId/client-action', body);
       _loadClientData();
+      _contractRefreshNotifier.value++;
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
           content: Text(action == 'approved' ? '✅ تمت الموافقة على العقد' : '📝 تم إرسال طلب التعديل'),
@@ -586,19 +585,35 @@ Text(
   Widget _buildPaymentStage() {
     final ws = _workspace;
     double totalAmount = 0;
+    double paidAmount = 0;
+    String currency = 'SAR';
+    String? startDate;
+    String? endDate;
     if (ws != null) {
       final contracts = safeList(ws['contracts']);
       for (final c in contracts) {
         if (c is Map) {
           totalAmount += double.tryParse((c['value'] ?? '0').toString()) ?? 0.0;
+          currency = (c['currency'] as String?) ?? currency;
+          if (c['start_date'] != null) startDate = (c['start_date'] as String).split('T')[0];
+          if (c['end_date'] != null) endDate = (c['end_date'] as String).split('T')[0];
+        }
+      }
+      final payments = safeList(ws['payments']);
+      for (final p in payments) {
+        if (p is Map && p['status'] == 'approved') {
+          paidAmount += double.tryParse((p['amount'] ?? '0').toString()) ?? 0.0;
         }
       }
     }
+    final remaining = totalAmount - paidAmount;
+    final progress = totalAmount > 0 ? (paidAmount / totalAmount).clamp(0.0, 1.0) : 0.0;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-          const SizedBox(height: 40),
+          const SizedBox(height: 24),
           Container(
             width: 80, height: 80,
             decoration: BoxDecoration(
@@ -607,44 +622,98 @@ Text(
             ),
             child: const Icon(Icons.payment, size: 36, color: ShadColors.warning),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           const Text(
             'إتمام الدفع',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay'),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             'يرجى تأكيد الدفع لتفعيل مساحة العمل',
-            style: TextStyle(fontSize: 14, color: ShadColors.textSecondary, fontFamily: 'NotoSansArabic'),
+            style: TextStyle(fontSize: 13, color: ShadColors.textSecondary),
           ),
           const SizedBox(height: 24),
+
+          // Progress card
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: ShadColors.card,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ShadColors.gold.withAlpha(60)),
+              color: const Color(0xFF0D0D0D),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: ShadColors.cardBorder),
             ),
             child: Column(children: [
-              Text(
-                'المبلغ الإجمالي',
-                style: TextStyle(fontSize: 12, color: ShadColors.textSecondary),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$totalAmount ريال',
-                style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay'),
+              Text('${paidAmount.toStringAsFixed(2)} $currency', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+              const SizedBox(height: 4),
+              Text('من أصل $totalAmount $currency — متبقي ${remaining.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFF2A2A2A),
+                  valueColor: const AlwaysStoppedAnimation(ShadColors.gold),
+                ),
               ),
             ]),
           ),
+          const SizedBox(height: 16),
+
+          // Contract details
+          if (startDate != null || endDate != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ShadColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('تفاصيل العقد', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
+                const SizedBox(height: 10),
+                if (startDate != null)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Row(children: [
+                      Icon(Icons.calendar_today, size: 14, color: ShadColors.textDisabled),
+                      const SizedBox(width: 8),
+                      Text('تاريخ البداية: $startDate', style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary)),
+                    ]),
+                  ),
+                if (endDate != null)
+                  Row(children: [
+                    Icon(Icons.calendar_today, size: 14, color: ShadColors.textDisabled),
+                    const SizedBox(width: 8),
+                    Text('تاريخ الإنتهاء: $endDate', style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary)),
+                  ]),
+              ]),
+            ),
           const SizedBox(height: 24),
+
+          // Payment info cards
+          Row(children: [
+            Expanded(child: _paymentInfoTile('المبلغ', '$totalAmount', ShadColors.gold)),
+            const SizedBox(width: 12),
+            Expanded(child: _paymentInfoTile('العملة', currency, ShadColors.textPrimary)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: _paymentInfoTile('المدفوع', paidAmount.toStringAsFixed(0), ShadColors.success)),
+            const SizedBox(width: 12),
+            Expanded(child: _paymentInfoTile('المتبقي', remaining.toStringAsFixed(0), ShadColors.warning)),
+          ]),
+          const SizedBox(height: 28),
+
+          // CTA button
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showPaymentBottomSheet(totalAmount, ws?['id']),
-              icon: const Icon(Icons.check_circle, size: 20),
-              label: const Text('تأكيد الدفع'),
+              onPressed: () => _showPaymentBottomSheet(remaining > 0 ? remaining : totalAmount, ws?['id']),
+              icon: const Icon(Icons.add_circle_outline, size: 20),
+              label: const Text('إرسال دفعة'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: ShadColors.crimson,
                 foregroundColor: ShadColors.textOnCrimson,
@@ -655,6 +724,22 @@ Text(
           ),
         ],
       ),
+    );
+  }
+
+  Widget _paymentInfoTile(String label, String value, Color valueColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ShadColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ShadColors.cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: valueColor, fontFamily: 'PlayfairDisplay')),
+      ]),
     );
   }
 
@@ -688,154 +773,167 @@ Text(
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 16),
-          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              const Text('طلب دفعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
-              const Spacer(),
-              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
-            ]),
-            const SizedBox(height: 16),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedCurrency,
-              builder: (_, cur, __) => TextField(
-                controller: amountCtrl,
-                decoration: InputDecoration(labelText: 'المبلغ *', hintText: '0.00', prefixText: '$cur '),
-                keyboardType: TextInputType.number,
-              ),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedCurrency,
-              builder: (_, cur, __) => DropdownButtonFormField<String>(
-                initialValue: cur,
-                decoration: const InputDecoration(labelText: 'العملة'),
-                items: currencies.map((c) => DropdownMenuItem(
-                  value: c,
-                  child: Text('$c — ${currencyLabels[c] ?? ''}'),
-                )).toList(),
-                onChanged: (v) { if (v != null) selectedCurrency.value = v; },
-              ),
-            ),
-            const SizedBox(height: 12),
-            ValueListenableBuilder<String>(
-              valueListenable: selectedMethod,
-              builder: (_, val, __) => DropdownButtonFormField<String>(
-                initialValue: val,
-                decoration: const InputDecoration(labelText: 'طريقة الدفع'),
-                items: methodLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
-                onChanged: (v) { if (v != null) selectedMethod.value = v; },
-              ),
-            ),
-            const SizedBox(height: 12),
-            if (proofFiles.isNotEmpty) ...[
-              SizedBox(
-                height: 100,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: proofFiles.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final pf = proofFiles[i];
-                    return Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Container(
-                          width: 80, height: 80,
-                          decoration: BoxDecoration(
-                            color: ShadColors.card,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: ShadColors.cardBorder),
-                          ),
-                          child: pf['bytes'] != null
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.memory(pf['bytes'] as Uint8List, fit: BoxFit.cover, width: 80, height: 80),
-                                )
-                              : Center(
-                                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                                    const Icon(Icons.insert_drive_file, size: 24, color: ShadColors.textSecondary),
-                                    const SizedBox(height: 4),
-                                    Text(pf['name'] ?? '', style: const TextStyle(fontSize: 9, color: ShadColors.textDisabled), overflow: TextOverflow.ellipsis, maxLines: 2, textAlign: TextAlign.center),
-                                  ]),
-                                ),
-                        ),
-                        Positioned(
-                          right: -6, top: -6,
-                          child: GestureDetector(
-                            onTap: () {
-                              setSheetState(() { proofFiles.removeAt(i); });
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(color: ShadColors.error, shape: BoxShape.circle),
-                              child: const Icon(Icons.close, size: 12, color: Colors.white),
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [
+                const Text('طلب دفعة', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                const Spacer(),
+                IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+              ]),
+              const SizedBox(height: 16),
+              ValueListenableBuilder<String>(
+                valueListenable: selectedCurrency,
+                builder: (_, cur, __) => TextField(
+                  controller: amountCtrl,
+                  decoration: InputDecoration(labelText: 'المبلغ *', hintText: '0.00', prefixText: '$cur '),
+                  keyboardType: TextInputType.number,
                 ),
               ),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<String>(
+                valueListenable: selectedCurrency,
+                builder: (_, cur, __) => DropdownButtonFormField<String>(
+                  initialValue: cur,
+                  decoration: const InputDecoration(labelText: 'العملة'),
+                  items: currencies.map((c) => DropdownMenuItem(
+                    value: c,
+                    child: Text('$c — ${currencyLabels[c] ?? ''}'),
+                  )).toList(),
+                  onChanged: (v) { if (v != null) selectedCurrency.value = v; },
+                ),
+              ),
+              const SizedBox(height: 12),
+              ValueListenableBuilder<String>(
+                valueListenable: selectedMethod,
+                builder: (_, val, __) => DropdownButtonFormField<String>(
+                  initialValue: val,
+                  decoration: const InputDecoration(labelText: 'طريقة الدفع'),
+                  items: methodLabels.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+                  onChanged: (v) { if (v != null) selectedMethod.value = v; },
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Proof files section
+              Text('إثبات الدفع', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary)),
               const SizedBox(height: 8),
-            ],
-            Row(children: [
-              Expanded(
-                child: OutlinedButton.icon(
+
+              if (proofFiles.isNotEmpty) ...[
+                SizedBox(
+                  height: 90,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: proofFiles.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (_, i) {
+                      final pf = proofFiles[i];
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Container(
+                            width: 80, height: 80,
+                            decoration: BoxDecoration(
+                              color: ShadColors.card,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: ShadColors.cardBorder),
+                            ),
+                            child: pf['bytes'] != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.memory(pf['bytes'] as Uint8List, fit: BoxFit.cover, width: 80, height: 80),
+                                  )
+                                : Center(
+                                    child: Column(mainAxisSize: MainAxisSize.min, children: [
+                                      const Icon(Icons.insert_drive_file, size: 24, color: ShadColors.textSecondary),
+                                      const SizedBox(height: 4),
+                                      Text(pf['name'] ?? '', style: const TextStyle(fontSize: 9, color: ShadColors.textDisabled), overflow: TextOverflow.ellipsis, maxLines: 2, textAlign: TextAlign.center),
+                                    ]),
+                                  ),
+                          ),
+                          Positioned(
+                            right: -6, top: -6,
+                            child: GestureDetector(
+                              onTap: () {
+                                setSheetState(() { proofFiles.removeAt(i); });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: const BoxDecoration(color: ShadColors.error, shape: BoxShape.circle),
+                                child: const Icon(Icons.close, size: 12, color: Colors.white),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              Row(children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final r = await FilePicker.platform.pickFiles(type: FileType.custom, allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'], withData: kIsWeb);
+                      if (r != null && r.files.isNotEmpty) {
+                        setSheetState(() {
+                          for (final f in r.files) {
+                            if (kIsWeb) {
+                              proofFiles.add({'bytes': f.bytes, 'name': f.name});
+                            } else {
+                              proofFiles.add({'file': File(f.path!), 'name': f.name});
+                            }
+                          }
+                        });
+                      }
+                    },
+                    icon: const Icon(Icons.upload_file, size: 18),
+                    label: const Text('إرفاق ملف'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                OutlinedButton.icon(
                   onPressed: () async {
-                    final r = await FilePicker.platform.pickFiles(type: FileType.image, withData: kIsWeb);
-                    if (r != null && r.files.isNotEmpty) {
+                    final r = await ImagePicker().pickImage(source: ImageSource.camera);
+                    if (r != null) {
                       setSheetState(() {
-                        final f = r.files.first;
                         if (kIsWeb) {
-                          proofFiles.add({'bytes': f.bytes, 'name': f.name});
+                          r.readAsBytes().then((bytes) {
+                            setSheetState(() { proofFiles.add({'bytes': bytes, 'name': r.name}); });
+                          });
                         } else {
-                          proofFiles.add({'file': File(f.path!), 'name': f.name});
+                          proofFiles.add({'file': File(r.path), 'name': r.name});
                         }
                       });
                     }
                   },
-                  icon: const Icon(Icons.upload_file, size: 18),
-                  label: const Text('إرفاق إثبات'),
+                  icon: const Icon(Icons.camera_alt, size: 18),
+                  label: const Text('تصوير'),
                 ),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () async {
-                  final r = await ImagePicker().pickImage(source: ImageSource.camera);
-                  if (r != null) {
-                    setSheetState(() {
-                      if (kIsWeb) {
-                        r.readAsBytes().then((bytes) {
-                          setSheetState(() { proofFiles.add({'bytes': bytes, 'name': r.name}); });
-                        });
-                      } else {
-                        proofFiles.add({'file': File(r.path), 'name': r.name});
-                      }
-                    });
-                  }
-                },
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12)),
-                child: const Icon(Icons.camera_alt, size: 18),
+              ]),
+              if (proofFiles.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text('${proofFiles.length} ملف(ات) مرفق(ة)', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+                ),
+              const SizedBox(height: 20),
+              ValueListenableBuilder<bool>(
+                valueListenable: uploadingNotifier,
+                builder: (_, uploading, __) => SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: uploading ? null : () => _submitPaymentOnboarding(
+                      ctx, setSheetState, uploadingNotifier, workspaceId,
+                      amountCtrl, selectedCurrency.value, selectedMethod.value, proofFiles,
+                    ),
+                    child: uploading
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('إرسال الدفعة'),
+                  ),
+                ),
               ),
             ]),
-            const SizedBox(height: 20),
-            ValueListenableBuilder<bool>(
-              valueListenable: uploadingNotifier,
-              builder: (_, uploading, __) => SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: uploading ? null : () => _submitPaymentOnboarding(
-                    ctx, setSheetState, uploadingNotifier, workspaceId,
-                    amountCtrl, selectedCurrency.value, selectedMethod.value, proofFiles,
-                  ),
-                  child: uploading
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('إرسال الدفعة'),
-                ),
-              ),
-            ),
-          ]),
+          ),
         ),
       ),
     );

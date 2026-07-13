@@ -115,4 +115,27 @@ class FileController extends Controller
         $documentDefinition->delete();
         return response()->json(['message' => 'تم حذف تعريف المستند']);
     }
+
+    public function destroy(Request $request, Workspace $workspace, FileEntry $file): JsonResponse
+    {
+        if ($file->workspace_id !== $workspace->id) {
+            abort(404);
+        }
+
+        if ($file->uploaded_by_type !== get_class($request->user()) || $file->uploaded_by_id !== $request->user()->id) {
+            abort(403, 'غير مصرح لك بحذف هذا الملف');
+        }
+
+        if ($file->status === 'approved') {
+            abort(422, 'لا يمكن حذف ملف تمت الموافقة عليه');
+        }
+
+        if ($file->file_url && Storage::disk('public')->exists(str_replace('/storage/', '', $file->file_url))) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $file->file_url));
+        }
+
+        $file->delete();
+
+        return response()->json(['message' => 'تم حذف الملف']);
+    }
 }
