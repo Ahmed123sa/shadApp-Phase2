@@ -55,14 +55,14 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   String get _contractCurrency {
-    final contract = _suggestedContract;
-    return (contract?['currency'] as String?) ?? 'SAR';
+    final contracts = _payableContracts;
+    return (contracts.isNotEmpty ? (contracts.first['currency'] as String?) : null) ?? 'SAR';
   }
 
   double get _grandTotal {
-    final contract = _suggestedContract;
-    if (contract != null) {
-      return num.tryParse(contract['value']?.toString() ?? '')?.toDouble() ?? 0;
+    final contracts = _payableContracts;
+    if (contracts.isNotEmpty) {
+      return contracts.fold<double>(0, (sum, c) => sum + (num.tryParse(c['value']?.toString() ?? '')?.toDouble() ?? 0));
     }
     return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
   }
@@ -93,11 +93,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Map<String, dynamic>? get _suggestedContract {
-    return _contracts.cast<Map<String, dynamic>?>().firstWhere(
+  List<Map<String, dynamic>> get _payableContracts {
+    return _contracts.cast<Map<String, dynamic>?>().where(
       (c) => c?['status'] == 'company_approved' || c?['status'] == 'completed',
-      orElse: () => null,
-    );
+    ).whereType<Map<String, dynamic>>().toList();
   }
 
   List<dynamic> get _filteredPayments {
@@ -232,7 +231,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
     // Auto-suggest contract value
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final suggested = _suggestedContract;
+      final suggested = _payableContracts.isNotEmpty ? _payableContracts.first : null;
       if (suggested != null && _payments.where((p) => p['status'] == 'pending').isEmpty) {
         amountCtrl.text = suggested['value'].toString();
       }
@@ -491,9 +490,9 @@ class _PaymentsPageState extends State<PaymentsPage> {
               Expanded(child: Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
             ]),
             Text(p['method_type'] ?? '', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-            if (p['contract_title'] != null) ...[
+            if (p['contract'] is Map && p['contract']['title'] != null) ...[
               const SizedBox(height: 2),
-              Text(p['contract_title'], style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'Archivo')),
+              Text('📄 ${p['contract']['title']}', style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
             ],
             if (p['proof_file_url'] != null)
               ...(() {

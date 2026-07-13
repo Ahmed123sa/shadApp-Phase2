@@ -45,11 +45,10 @@ class _PaymentsTabState extends State<PaymentsTab> {
     if (mounted) setState(() => _loading = false);
   }
 
-  Map<String, dynamic>? get _suggestedContract {
-    return _contracts.cast<Map<String, dynamic>?>().firstWhere(
+  List<Map<String, dynamic>> get _payableContracts {
+    return _contracts.cast<Map<String, dynamic>?>().where(
       (c) => c?['status'] == 'company_approved' || c?['status'] == 'completed',
-      orElse: () => null,
-    );
+    ).whereType<Map<String, dynamic>>().toList();
   }
 
   double get _totalPaid {
@@ -59,16 +58,16 @@ class _PaymentsTabState extends State<PaymentsTab> {
   }
 
   double get _grandTotal {
-    final contract = _suggestedContract;
-    if (contract != null) {
-      return num.tryParse(contract['value']?.toString() ?? '')?.toDouble() ?? 0;
+    final contracts = _payableContracts;
+    if (contracts.isNotEmpty) {
+      return contracts.fold<double>(0, (sum, c) => sum + (num.tryParse(c['value']?.toString() ?? '')?.toDouble() ?? 0));
     }
     return _payments.fold<double>(0, (s, p) => s + (num.tryParse(p['amount']?.toString() ?? '')?.toDouble() ?? 0));
   }
 
   String get _contractCurrency {
-    final contract = _suggestedContract;
-    return (contract?['currency'] as String?) ?? 'SAR';
+    final contracts = _payableContracts;
+    return (contracts.isNotEmpty ? (contracts.first['currency'] as String?) : null) ?? 'SAR';
   }
 
   String _installmentLabel(int index) {
@@ -182,6 +181,8 @@ class _PaymentsTabState extends State<PaymentsTab> {
                           Expanded(child: Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'ر.س'}', style: ShadTypography.cardTitle)),
                         ]),
                         Text(p['method_type'] ?? '', style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
+                        if (p['contract'] is Map && p['contract']['title'] != null)
+                          Text('📄 ${p['contract']['title']}', style: ShadTypography.caption.copyWith(color: ShadColors.textDisabled)),
                       ]),
                     ),
                     Container(

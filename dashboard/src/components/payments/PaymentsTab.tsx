@@ -52,9 +52,9 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
 
   if (loading) return <LoadingSkeleton />;
 
-  const payableContract = contracts.find((c: any) => c.status === 'company_approved' || c.status === 'completed');
-  const contractValue = payableContract ? Number(payableContract.value) : 0;
-  const contractCurrency = payableContract?.currency || 'SAR';
+  const payableContracts = contracts.filter((c: any) => c.status === 'company_approved' || c.status === 'completed');
+  const contractValue = payableContracts.reduce((s, c) => s + Number(c.value), 0);
+  const contractCurrency = payableContracts.length > 0 ? (payableContracts[0]?.currency || 'SAR') : 'SAR';
   const totalPaid = payments.filter(p => p.status === 'approved').reduce((s, p) => s + Number(p.amount), 0);
   const grandTotal = contractValue > 0 ? contractValue : payments.reduce((s, p) => s + Number(p.amount), 0);
   const remaining = grandTotal - totalPaid;

@@ -9,6 +9,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [methods, setMethods] = useState<string[]>([]);
   const [payableContract, setPayableContract] = useState<any>(null);
+  const [payableContracts, setPayableContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [amount, setAmount] = useState('');
@@ -30,12 +31,13 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         setMethods(payData.available_methods || []);
 
         const contracts = contRes.data.contracts?.data ?? contRes.data.contracts ?? [];
-        const payable = contracts.find((c: any) =>
+        const payableList = contracts.filter((c: any) =>
           c.status === 'company_approved' || c.status === 'completed'
         );
-        if (payable) {
-          setPayableContract(payable);
-          if (!payData.payments?.length) setAmount(String(payable.value));
+        if (payableList.length > 0) {
+          setPayableContract(payableList[0]);
+          setPayableContracts(payableList);
+          if (!payData.payments?.length) setAmount(String(payableList[0].value));
         }
       } catch (e) {
         console.error(e);
@@ -102,7 +104,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
 
   const approvedPayments = payments.filter(p => p.status === 'approved');
   const totalPaid = approvedPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const grandTotal = payableContract ? Number(payableContract.value) : payments.reduce((s, p) => s + Number(p.amount), 0);
+  const grandTotal = payableContracts.length > 0 ? payableContracts.reduce((s, c) => s + Number(c.value), 0) : payments.reduce((s, p) => s + Number(p.amount), 0);
   const contractCurrency = payableContract?.currency || 'SAR';
   const remaining = grandTotal - totalPaid;
   const isFullyPaid = totalPaid >= grandTotal && grandTotal > 0;
