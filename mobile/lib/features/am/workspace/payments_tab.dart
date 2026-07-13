@@ -230,7 +230,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                             },
                             child: Row(children: [
                               Text('📎 ', style: TextStyle(fontSize: 12)),
-                              Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.primary, decoration: TextDecoration.underline)),
+                              Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.gold)),
                             ]),
                           ),
                         ));

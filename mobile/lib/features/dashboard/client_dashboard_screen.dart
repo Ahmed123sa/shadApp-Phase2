@@ -248,11 +248,11 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       const ClientFilesPage(),
     ];
 
-    final titles = ['العقود', 'الدفعة', 'الشات', 'طلبات', 'ملفات'];
+    final titles = ['العقود', 'الدفعة', 'الشات', 'طلبات', 'ملفات', 'الاجتماعات', 'التوقيع', 'فريق العمل'];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(titles[_selectedIndex]),
+        title: Text(_selectedIndex < titles.length ? titles[_selectedIndex] : '', style: const TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.gold)),
         leading: const Padding(
           padding: EdgeInsets.only(left: 8),
           child: ShadLogo(size: 28, showText: false),
@@ -306,17 +306,6 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
               const SubUsersPage(),
             ],
           ),
-          if (_selectedIndex == 3)
-            Positioned(
-              bottom: 16, left: 16,
-              child: FloatingActionButton(
-                onPressed: () {},
-                backgroundColor: ShadColors.crimson,
-                foregroundColor: Colors.white,
-                shape: CircleBorder(side: BorderSide(color: ShadColors.gold, width: 1.5)),
-                child: const Icon(Icons.add, size: 24),
-              ),
-            ),
         ],
       ),
       bottomNavigationBar: Container(

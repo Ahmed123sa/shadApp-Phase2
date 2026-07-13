@@ -177,8 +177,6 @@ class _ContractsPageState extends State<ContractsPage> {
           const SizedBox(height: 6),
           Row(children: [
             Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
-            const Spacer(),
-            Text('Ref: ${c['id'] ?? ''}', style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
           ]),
           if (c['start_date'] != null) ...[
             const SizedBox(height: 4),

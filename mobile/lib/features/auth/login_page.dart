@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/api_client.dart';
+import '../../core/locale_provider.dart';
 import '../../core/theme.dart';
 
 class LoginPage extends StatefulWidget {
@@ -85,7 +86,15 @@ class _LoginPageState extends State<LoginPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 32),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              const SizedBox(height: 48),
+              Align(
+                alignment: Alignment.topLeft,
+                child: IconButton(
+                  icon: const Icon(Icons.language, size: 20),
+                  onPressed: () => LocaleProvider().toggle(),
+                  tooltip: 'تغيير اللغة',
+                ),
+              ),
+              const SizedBox(height: 16),
               // Logo
               RichText(
                 text: TextSpan(
@@ -95,10 +104,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 8),
-              Text(isAr ? 'بوابة العميل' : 'Client Portal',
-                style: TextStyle(fontSize: 13, color: ShadColors.textSecondary, fontFamily: isAr ? 'NotoSansArabic' : 'Archivo')),
-              const SizedBox(height: 48),
+              const SizedBox(height: 32),
 
               if (_error != null)
                 Container(

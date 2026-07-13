@@ -535,7 +535,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                     },
                     child: Row(children: [
                       Text('📎 ', style: TextStyle(fontSize: 12, fontFamily: 'NotoSansArabic')),
-                      Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.primary, fontFamily: 'NotoSansArabic', decoration: TextDecoration.underline)),
+                      Text('عرض إثبات الدفع', style: TextStyle(fontSize: 12, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
                     ]),
                   ),
                 ));

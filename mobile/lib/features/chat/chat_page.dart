@@ -172,6 +172,7 @@ class _ChatPageState extends State<ChatPage> {
 
     final amName = _workspaceData?['account_manager']?['name'] as String? ?? 'مدير الحساب';
     final amOnline = _workspaceData?['account_manager']?['online'] == true;
+    final amAvatarUrl = _workspaceData?['account_manager']?['avatar_url'] as String?;
 
     return Column(children: [
       // Chat Header
@@ -185,8 +186,9 @@ class _ChatPageState extends State<ChatPage> {
           CircleAvatar(
             radius: 17,
             backgroundColor: ShadColors.card,
-            child: Text(_initials(amName),
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ShadColors.gold)),
+            backgroundImage: amAvatarUrl != null ? NetworkImage(_api.resolveFileUrl(amAvatarUrl)) : null,
+            child: amAvatarUrl == null ? Text(_initials(amName),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ShadColors.gold)) : null,
           ),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
