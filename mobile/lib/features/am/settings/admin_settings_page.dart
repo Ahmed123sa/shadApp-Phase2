@@ -81,7 +81,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     final file = File(result.files.single.path!);
     try {
       await _api.multipartPost('/auth/me', {}, file: file, fileField: 'avatar');
-      _load();
+      await _load();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم تغيير الصورة')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل تغيير الصورة: $e')));
