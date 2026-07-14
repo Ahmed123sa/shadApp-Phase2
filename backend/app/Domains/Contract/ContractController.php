@@ -51,6 +51,7 @@ class ContractController extends Controller
 
         $contract = $workspace->contracts()->create([
             'title' => $request->title,
+            'contract_type' => $request->contract_type ?? 'main',
             'value' => $request->value ?? 0,
             'currency' => $request->currency ?? 'SAR',
             'start_date' => $request->start_date,

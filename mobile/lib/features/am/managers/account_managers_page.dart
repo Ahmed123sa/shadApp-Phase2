@@ -249,8 +249,8 @@ class _AccountManagersPageState extends State<AccountManagersPage> {
                     final m = _managers[i] as Map<String, dynamic>;
                     final name = m['name'] as String? ?? '';
                     final email = m['email'] as String? ?? '';
-                    final mgrId = m['id'] as int;
-                    final clientCount = m['managed_clients_count'] as int? ?? 0;
+                    final mgrId = int.tryParse(m['id']?.toString() ?? '') ?? 0;
+                    final clientCount = int.tryParse(m['managed_clients_count']?.toString() ?? '') ?? 0;
                     final phone = m['phone'] as String?;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),

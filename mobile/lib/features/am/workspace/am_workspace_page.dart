@@ -12,8 +12,9 @@ import 'calendar_tab.dart';
 import '../widgets/contract_builder.dart';
 
 class AmWorkspacePage extends StatefulWidget {
+  final int? workspaceId;
   final int initialTabIndex;
-  const AmWorkspacePage({super.key, this.initialTabIndex = 0});
+  const AmWorkspacePage({super.key, this.workspaceId, this.initialTabIndex = 0});
 
   @override
   State<AmWorkspacePage> createState() => _AmWorkspacePageState();
@@ -23,6 +24,7 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   final _api = ApiClient();
   String? _wsStatus;
   String? _wsContactPerson;
+  String? _wsName;
   late final TabController _tabController;
 
   @override
@@ -39,13 +41,16 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   }
 
   Future<void> _fetchWorkspace() async {
-    if (_api.workspaceId == null) return;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
+    if (wsId == null) return;
     try {
-      final data = await _api.get('/workspaces/${_api.workspaceIdSafe}');
+      final data = await _api.get('/workspaces/$wsId');
       if (!mounted) return;
+      final ws = data['workspace'] as Map<String, dynamic>?;
       setState(() {
-        _wsStatus = (data['workspace'] as Map<String, dynamic>?)?['status'] as String?;
-        _wsContactPerson = ((data['workspace'] as Map<String, dynamic>?)?['client'] as Map<String, dynamic>?)?['contact_person'] as String?;
+        _wsStatus = ws?['status'] as String?;
+        _wsContactPerson = (ws?['client'] as Map<String, dynamic>?)?['contact_person'] as String?;
+        _wsName = (ws?['client'] as Map<String, dynamic>?)?['company_name'] as String?;
       });
     } catch (_) {}
   }
@@ -63,7 +68,7 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(ApiClient().userName ?? 'Workspace / مساحة العمل',
+                  Text(_wsName ?? 'Workspace / مساحة العمل',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'PlayfairDisplay')),
                   if (_wsStatus != null || _wsContactPerson != null)
                     Text(
@@ -109,13 +114,13 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
       body: TabBarView(
         controller: _tabController,
         children: [
-          ChatTab(wsStatus: _wsStatus),
-          FilesTab(),
-          ContractsTab(),
-          PaymentsTab(onWorkspaceUpdate: _fetchWorkspace),
-          ApprovalsTab(),
-          MeetingsTab(),
-          CalendarTab(),
+          ChatTab(wsStatus: _wsStatus, workspaceId: widget.workspaceId),
+          FilesTab(workspaceId: widget.workspaceId),
+          ContractsTab(workspaceId: widget.workspaceId),
+          PaymentsTab(onWorkspaceUpdate: _fetchWorkspace, workspaceId: widget.workspaceId),
+          ApprovalsTab(workspaceId: widget.workspaceId),
+          MeetingsTab(workspaceId: widget.workspaceId),
+          CalendarTab(workspaceId: widget.workspaceId),
         ],
       ),
     );

@@ -94,6 +94,7 @@ class _ChatPageState extends State<ChatPage> {
     try {
       final data = await _api.get('/workspaces/${_api.workspaceIdSafe}/chat');
       _messages = safeList(data['messages']);
+      await _api.post('/workspaces/${_api.workspaceIdSafe}/chat/mark-read', {});
     } catch (_) {}
     if (mounted) {
       setState(() => _loading = false);

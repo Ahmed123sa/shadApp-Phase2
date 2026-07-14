@@ -56,7 +56,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
 
   String get _contractCurrency {
     final contracts = _payableContracts;
-    return (contracts.isNotEmpty ? (contracts.first['currency'] as String?) : null) ?? 'SAR';
+    if (contracts.isEmpty) return 'SAR';
+    final currencies = contracts.map((c) => (c['currency'] as String?) ?? 'SAR').toSet();
+    if (currencies.length == 1) return currencies.first;
+    return (contracts.first['currency'] as String?) ?? 'SAR';
   }
 
   double get _grandTotal {
@@ -227,11 +230,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
     List<Map<String, dynamic>> proofFiles = [];
     final uploadingNotifier = ValueNotifier<bool>(false);
 
-    // Auto-suggest contract value
+    // Auto-suggest grand total
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final suggested = _payableContracts.isNotEmpty ? _payableContracts.first : null;
-      if (suggested != null && _payments.where((p) => p['status'] == 'pending').isEmpty) {
-        amountCtrl.text = suggested['value'].toString();
+      if (_grandTotal > 0 && _payments.where((p) => p['status'] == 'pending').isEmpty) {
+        amountCtrl.text = _grandTotal.toString();
       }
     });
 

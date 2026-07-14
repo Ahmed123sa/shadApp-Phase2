@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -10,8 +11,9 @@ import '../../../core/widgets/chat_contract_card.dart';
 import '../widgets/contract_builder.dart';
 
 class ChatTab extends StatefulWidget {
+  final int? workspaceId;
   final String? wsStatus;
-  const ChatTab({super.key, this.wsStatus});
+  const ChatTab({super.key, this.workspaceId, this.wsStatus});
 
   @override
   State<ChatTab> createState() => _ChatTabState();
@@ -23,12 +25,15 @@ class _ChatTabState extends State<ChatTab> {
   final _scrollController = ScrollController();
   List<dynamic> _messages = [];
   bool _loading = true;
+  Timer? _pollTimer;
+  int? get _wsId => widget.workspaceId ?? _api.workspaceId;
 
   @override
   void initState() {
     super.initState();
     _load();
-    final wsId = _api.workspaceId;
+    _startPolling();
+    final wsId = _wsId;
     if (wsId != null) {
       final reverb = ReverbService();
       reverb.onMessageReceived = (payload) {
@@ -45,8 +50,12 @@ class _ChatTabState extends State<ChatTab> {
     }
   }
 
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+  }
+
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = _wsId;
     if (wsId == null) return;
     try {
       final data = await _api.get('/workspaces/$wsId/chat');
@@ -70,16 +79,16 @@ class _ChatTabState extends State<ChatTab> {
 
   Future<void> _send() async {
     final text = _controller.text.trim();
-    if (text.isEmpty || _api.workspaceId == null) return;
+    if (text.isEmpty || _wsId == null) return;
     _controller.clear();
     try {
-      await _api.post('/workspaces/${_api.workspaceId}/chat', {'message': text});
+      await _api.post('/workspaces/$_wsId/chat', {'message': text});
       _load();
     } catch (_) {}
   }
 
   Future<void> _requireAction(int msgId) async {
-    if (_api.workspaceId == null) return;
+    if (_wsId == null) return;
     try {
       await _api.patch('/chat/$msgId/require-action', {});
       _load();
@@ -127,10 +136,10 @@ class _ChatTabState extends State<ChatTab> {
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
     );
-    if (result == null || result.files.isEmpty || _api.workspaceId == null) return;
+    if (result == null || result.files.isEmpty || _wsId == null) return;
     final file = File(result.files.single.path!);
     try {
-      await _api.multipartPost('/workspaces/${_api.workspaceId}/chat', {}, file: file, fileField: 'attachment');
+      await _api.multipartPost('/workspaces/$_wsId/chat', {}, file: file, fileField: 'attachment');
       _load();
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل إرسال المرفق')));
@@ -276,6 +285,7 @@ class _ChatTabState extends State<ChatTab> {
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _controller.dispose();
     _scrollController.dispose();
     final uid = _api.userId;

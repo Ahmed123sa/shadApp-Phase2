@@ -16,6 +16,7 @@ class StoreContractRequest extends FormRequest
     {
         return [
             'title' => 'required|string|max:255',
+            'contract_type' => 'nullable|string|in:main,additional',
             'value' => 'nullable|numeric|min:0',
             'currency' => 'nullable|string|max:10',
             'start_date' => 'nullable|date',

@@ -4,7 +4,8 @@ import '../../../core/theme.dart';
 import '../../../core/widgets/loading_state.dart';
 
 class CalendarTab extends StatefulWidget {
-  const CalendarTab({super.key});
+  final int? workspaceId;
+  const CalendarTab({super.key, this.workspaceId});
 
   @override
   State<CalendarTab> createState() => _CalendarTabState();
@@ -23,7 +24,7 @@ class _CalendarTabState extends State<CalendarTab> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() => _loading = true);
     _events = [];

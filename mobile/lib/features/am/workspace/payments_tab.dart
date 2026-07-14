@@ -7,8 +7,9 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 
 class PaymentsTab extends StatefulWidget {
+  final int? workspaceId;
   final VoidCallback? onWorkspaceUpdate;
-  const PaymentsTab({super.key, this.onWorkspaceUpdate});
+  const PaymentsTab({super.key, this.workspaceId, this.onWorkspaceUpdate});
 
   @override
   State<PaymentsTab> createState() => _PaymentsTabState();
@@ -28,7 +29,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {

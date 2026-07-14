@@ -10,7 +10,8 @@ import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/status_badge.dart';
 
 class ApprovalsTab extends StatefulWidget {
-  const ApprovalsTab({super.key});
+  final int? workspaceId;
+  const ApprovalsTab({super.key, this.workspaceId});
 
   @override
   State<ApprovalsTab> createState() => _ApprovalsTabState();
@@ -34,7 +35,7 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
@@ -58,7 +59,7 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
 
   Future<void> _create() async {
     final title = _titleController.text.trim();
-    if (title.isEmpty || _api.workspaceId == null) return;
+    if (title.isEmpty || widget.workspaceId == null) return;
     setState(() => _sending = true);
     try {
       final fields = <String, dynamic>{
@@ -66,9 +67,9 @@ class _ApprovalsTabState extends State<ApprovalsTab> {
         'description': _descController.text.trim(),
       };
       if (_selectedFiles.isNotEmpty) {
-        await _api.multipartPostMultiple('/workspaces/${_api.workspaceId}/approvals', fields, files: _selectedFiles, fileField: 'files[]');
+        await _api.multipartPostMultiple('/workspaces/${widget.workspaceId}/approvals', fields, files: _selectedFiles, fileField: 'files[]');
       } else {
-        await _api.post('/workspaces/${_api.workspaceId}/approvals', fields);
+        await _api.post('/workspaces/${widget.workspaceId}/approvals', fields);
       }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم إرسال طلب الموافقة')));

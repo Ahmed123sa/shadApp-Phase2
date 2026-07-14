@@ -48,7 +48,6 @@ class ReverbService {
     _currentUserId = null;
     _isClientChannel = false;
     await _connectAndListen();
-    _subscribe('workspace.$workspaceId');
   }
 
   Future<void> connectForUser(int userId) async {

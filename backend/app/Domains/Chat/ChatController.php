@@ -178,4 +178,17 @@ class ChatController extends Controller
 
         return response()->json(['message' => $chatMessage->fresh()->load('approval.certificate')]);
     }
+
+    public function markAsRead(Workspace $workspace, Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $senderType = get_class($user);
+
+        $workspace->chatMessages()
+            ->where('sender_type', '!=', $senderType)
+            ->whereNull('read_at')
+            ->update(['read_at' => now()]);
+
+        return response()->json(['message' => 'done']);
+    }
 }

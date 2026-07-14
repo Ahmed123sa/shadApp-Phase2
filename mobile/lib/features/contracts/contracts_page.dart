@@ -172,6 +172,16 @@ class _ContractsPageState extends State<ContractsPage> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Expanded(child: Text(c['title'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary))),
+            if (c['contract_type'] == 'additional')
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: ShadColors.gold.withAlpha(25),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text('إضافة', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: ShadColors.gold)),
+              ),
             StatusBadge(status: status),
           ]),
           const SizedBox(height: 6),
@@ -409,6 +419,11 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(c['title'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+                if (c['contract_type'] == 'additional')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text('عقد خدمة إضافية', style: TextStyle(fontSize: 12, color: ShadColors.gold.withAlpha(180))),
+                  ),
                 const SizedBox(height: 4),
                 Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
                 const SizedBox(height: 12),

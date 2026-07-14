@@ -13,8 +13,8 @@ class SendContractReminders extends Command
 
     public function handle(): void
     {
-        $contracts = Contract::whereIn('status', ['pending', 'client_pending', 'company_approved'])
-            ->where('created_at', '<=', now()->subDays(3))
+        $contracts = Contract::whereIn('status', ['sent', 'edit_requested'])
+            ->where('updated_at', '<=', now()->subDays(3))
             ->get();
 
         $sent = 0;

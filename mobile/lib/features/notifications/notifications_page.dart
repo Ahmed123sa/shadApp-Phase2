@@ -28,7 +28,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
       if (!mounted) return;
       setState(() {
         _notifications = data['notifications'] as List<dynamic>? ?? [];
-        _unreadCount = data['unread_count'] as int? ?? 0;
+        _unreadCount = int.tryParse(data['unread_count']?.toString() ?? '') ?? 0;
         _loading = false;
       });
     } catch (_) {

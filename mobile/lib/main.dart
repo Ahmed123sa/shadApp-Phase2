@@ -92,7 +92,7 @@ Future<void> _navigateFromNotification(Map<String, String> data, GoRouter router
   final role = await ApiClient().getRole();
 
   if (role == 'client') {
-    router.go('/dashboard');
+    router.go('/dashboard?tab=${_fcmTabIndex(type)}');
     return;
   }
 

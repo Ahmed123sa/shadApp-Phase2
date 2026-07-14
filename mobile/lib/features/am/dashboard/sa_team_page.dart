@@ -77,7 +77,7 @@ class _SaTeamPageState extends State<SaTeamPage> {
   Widget _managerCard(Map<String, dynamic> manager) {
     final name = manager['name'] as String? ?? '';
     final email = manager['email'] as String? ?? '';
-    final clientCount = manager['managed_clients_count'] as int? ?? 0;
+    final clientCount = int.tryParse(manager['managed_clients_count']?.toString() ?? '') ?? 0;
     final avatarUrl = manager['avatar_url'] as String?;
     final initials = name.isNotEmpty ? name.substring(0, name.length.clamp(0, 2)).toUpperCase() : '?';
 

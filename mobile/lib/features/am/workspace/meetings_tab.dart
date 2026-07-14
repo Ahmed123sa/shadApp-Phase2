@@ -9,7 +9,8 @@ import '../../../core/widgets/error_state.dart';
 import '../../../core/widgets/status_badge.dart';
 
 class MeetingsTab extends StatefulWidget {
-  const MeetingsTab({super.key});
+  final int? workspaceId;
+  const MeetingsTab({super.key, this.workspaceId});
 
   @override
   State<MeetingsTab> createState() => _MeetingsTabState();
@@ -33,7 +34,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
     try {
       final data = isSA
           ? await _api.get('/all-meetings')
-          : await _api.get('/workspaces/${_api.workspaceId}/meetings');
+          : await _api.get('/workspaces/${widget.workspaceId ?? _api.workspaceId}/meetings');
       _meetings = safeList(data['meetings']);
     } catch (_) {
       _error = 'فشل تحميل الاجتماعات';
@@ -46,7 +47,7 @@ class _MeetingsTabState extends State<MeetingsTab> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (_) => _CreateMeetingForm(onCreated: _load),
+      builder: (_) => _CreateMeetingForm(workspaceId: widget.workspaceId, onCreated: _load),
     );
   }
 
@@ -178,8 +179,9 @@ class _MeetingsTabState extends State<MeetingsTab> {
 }
 
 class _CreateMeetingForm extends StatefulWidget {
+  final int? workspaceId;
   final VoidCallback onCreated;
-  const _CreateMeetingForm({required this.onCreated});
+  const _CreateMeetingForm({this.workspaceId, required this.onCreated});
 
   @override
   State<_CreateMeetingForm> createState() => _CreateMeetingFormState();
@@ -204,7 +206,7 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
   }
 
   Future<void> _loadContracts() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     try {
       final data = await _api.get('/workspaces/$wsId/contracts');
@@ -222,11 +224,11 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
   }
 
   Future<void> _submit() async {
-    if (_titleController.text.trim().isEmpty || _api.workspaceId == null) return;
+    if (_titleController.text.trim().isEmpty || (widget.workspaceId ?? _api.workspaceId) == null) return;
     setState(() => _saving = true);
     final scheduledAt = DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute);
     try {
-      await _api.post('/workspaces/${_api.workspaceId}/meetings', {
+      await _api.post('/workspaces/${widget.workspaceId ?? _api.workspaceId}/meetings', {
         'title': _titleController.text.trim(),
         'scheduled_at': scheduledAt.toIso8601String(),
         'duration': _duration,

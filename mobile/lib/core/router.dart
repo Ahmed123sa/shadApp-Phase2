@@ -22,15 +22,19 @@ GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
     routes: [
       GoRoute(path: '/preview', builder: (_, __) => const PreviewPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
-      GoRoute(path: '/dashboard', builder: (_, __) => const DashboardPage()),
+      GoRoute(path: '/dashboard', builder: (_, state) {
+        final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+        return DashboardPage(initialTab: tab);
+      }),
       GoRoute(path: '/signature', builder: (_, __) => const SignaturePage()),
       GoRoute(path: '/am/dashboard', builder: (_, __) => const AmDashboardPage()),
       GoRoute(path: '/am/clients/create', builder: (_, __) => const CreateClientPage()),
       GoRoute(path: '/am/clients/:id', builder: (_, state) => ClientDetailPage(clientId: int.parse(state.pathParameters['id']!))),
       GoRoute(path: '/am/managers', builder: (_, __) => const AccountManagersPage()),
       GoRoute(path: '/am/workspace/:id', builder: (_, state) {
+        final wsId = int.tryParse(state.pathParameters['id'] ?? '');
         final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '');
-        return AmWorkspacePage(initialTabIndex: tab ?? 0);
+        return AmWorkspacePage(workspaceId: wsId, initialTabIndex: tab ?? 0);
       }),
       GoRoute(path: '/am/reports', builder: (_, __) => const ReportsPage()),
       GoRoute(path: '/am/audit-logs', builder: (_, __) => const AuditLogPage()),

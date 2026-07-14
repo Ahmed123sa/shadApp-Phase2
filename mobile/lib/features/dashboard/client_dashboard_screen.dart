@@ -18,7 +18,8 @@ import '../subusers/subusers_page.dart';
 import '../signature/signature_tab.dart';
 
 class ClientDashboardScreen extends StatefulWidget {
-  const ClientDashboardScreen({super.key});
+  final int initialTab;
+  const ClientDashboardScreen({super.key, this.initialTab = 0});
 
   @override
   State<ClientDashboardScreen> createState() => _ClientDashboardScreenState();
@@ -37,6 +38,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   String? _error;
   int _lastStage = 0;
   bool _autoAdvancing = false;
+  bool _hasInitialTabOverride = false;
   StreamSubscription? _fcmSubscription;
 
   int _computeStage() {
@@ -79,6 +81,13 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   @override
   void initState() {
     super.initState();
+    _selectedIndex = widget.initialTab;
+    if (widget.initialTab > 0) {
+      _hasInitialTabOverride = true;
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) _hasInitialTabOverride = false;
+      });
+    }
     _loadClientData();
     _loadNotifs();
     _setupRealtimeNotifications();
@@ -161,7 +170,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   }
 
   void _checkAutoAdvance() {
-    if (_autoAdvancing) return;
+    if (_autoAdvancing || _hasInitialTabOverride) return;
     final currentStage = _computeStage();
     if (_isTabLocked(_selectedIndex)) {
       final targetTab = _stageToTab(currentStage);
@@ -183,7 +192,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   Future<void> _loadNotifs() async {
     try {
       final data = await _api.get('/notifications');
-      _unreadNotifs = (data['unread_count'] as num? ?? 0).toInt();
+      _unreadNotifs = int.tryParse(data['unread_count']?.toString() ?? '') ?? 0;
     } catch (_) {}
     try {
       final data = await _api.get('/workspaces/${_api.workspaceIdSafe}/chat');

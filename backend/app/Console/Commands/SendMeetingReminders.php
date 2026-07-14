@@ -32,6 +32,12 @@ class SendMeetingReminders extends Command
                 $manager->notify(new MeetingReminderNotification($meeting));
                 $sent++;
             }
+
+            $client = $meeting->workspace?->client;
+            if ($client && $client->id !== ($creator?->id) && $client->id !== ($manager?->id)) {
+                $client->notify(new MeetingReminderNotification($meeting));
+                $sent++;
+            }
         }
 
         $this->info("Sent {$sent} meeting reminder(s).");

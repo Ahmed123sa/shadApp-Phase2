@@ -81,7 +81,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         }
         try {
           final pData = await _api.get('/payments/pending');
-          _pendingPayments = pData['payments'] as List<dynamic>? ?? [];
+          _pendingPayments = safeList(pData['payments']);
         } catch (_) {
           _pendingPayments = [];
         }
@@ -110,7 +110,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   Future<void> _loadNotifs() async {
     try {
       final data = await _api.get('/notifications');
-      _unreadNotifs = (data['unread_count'] as num? ?? 0).toInt();
+      _unreadNotifs = int.tryParse(data['unread_count']?.toString() ?? '') ?? 0;
     } catch (_) {}
     if (mounted) setState(() {});
   }
@@ -242,8 +242,10 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               results.add({
                 'title': c['title'] ?? '',
                 'value': c['value'] ?? 0,
+                'currency': c['currency'] ?? 'SAR',
                 'company': client['company_name'] ?? '',
                 'client': client,
+                'workspace_id': ws['id'],
               });
             }
           }
@@ -440,7 +442,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           if (_pendingContracts.isNotEmpty)
             ..._pendingContracts.take(2).map((c) => _approvalItem(
               title: 'اعتماد عقد — ${c['title'] ?? ''}',
-              subtitle: '${c['company'] ?? ''} • ${(c['value'] as num?)?.toInt() ?? 0} ج.م',
+              subtitle: '${c['company'] ?? ''} • ${double.tryParse(c['value']?.toString() ?? '')?.toStringAsFixed(0) ?? '0'} ${c['currency'] ?? ''}',
               isContract: true,
             )),
           if (_pendingPayments.isNotEmpty)
@@ -448,7 +450,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               final client = p['workspace']?['client'] as Map<String, dynamic>?;
               return _approvalItem(
                 title: 'اعتماد دفعة — ${client?['company_name'] ?? 'عميل'}',
-                subtitle: '${p['currency'] ?? ''} ${(p['amount'] as num?)?.toDouble().toStringAsFixed(0) ?? '0'}',
+                subtitle: '${p['currency'] ?? ''} ${(double.tryParse(p['amount']?.toString() ?? '') ?? 0).toStringAsFixed(0)}',
                 isContract: false,
               );
             }),
@@ -561,7 +563,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     final isSA = _api.role == 'super_admin';
     if (isSA) {
       final totalManagers = _allManagers.length;
-      final totalClients = _allManagers.fold<int>(0, (sum, m) => sum + ((m['managed_clients_count'] as int? ?? 0)));
+      final totalClients = _allManagers.fold<int>(0, (sum, m) => sum + (int.tryParse(m['managed_clients_count']?.toString() ?? '') ?? 0));
       final stats = [
         ('إجمالي المديرين', '$totalManagers', Icons.admin_panel_settings, ShadColors.sent),
         ('إجمالي العملاء', '$totalClients', Icons.people, ShadColors.companyApproved),
@@ -740,7 +742,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   }
 
   void _showManagerClients(Map<String, dynamic> manager) async {
-    final managerId = manager['id'] as int;
+    final managerId = int.tryParse(manager['id']?.toString() ?? '') ?? 0;
     try {
       final data = await _api.get('/account-managers/$managerId');
       final clients = data['clients'] as List<dynamic>? ?? [];
@@ -766,7 +768,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   Widget _managerCard(Map<String, dynamic> manager) {
     final name = manager['name'] as String? ?? '';
     final email = manager['email'] as String? ?? '';
-    final clientCount = manager['managed_clients_count'] as int? ?? 0;
+    final clientCount = int.tryParse(manager['managed_clients_count']?.toString() ?? '') ?? 0;
     final avatarUrl = manager['avatar_url'] as String?;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
@@ -815,7 +817,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     final wsActive = wsStatus == 'active';
     final name = client['company_name'] as String? ?? '';
     final person = client['contact_person'] as String? ?? '';
-    final clientId = client['id'] as int;
+    final clientId = int.tryParse(client['id']?.toString() ?? '') ?? 0;
     final paymentStatus = client['payment_status'] as String?;
     final signedAt = client['signed_at'] as String?;
 
@@ -1107,7 +1109,7 @@ class _PendingPaymentsSheet extends StatelessWidget {
               itemBuilder: (_, i) {
                 final p = payments[i];
                 final client = p['workspace']?['client'] as Map<String, dynamic>?;
-                final amount = (p['amount'] as num?)?.toDouble() ?? 0;
+                final amount = double.tryParse(p['amount']?.toString() ?? '') ?? 0;
                 return ListTile(
                   leading: const Icon(Icons.payments, size: 24, color: ShadColors.warning),
                   title: Text(client?['company_name'] as String? ?? 'عميل', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),

@@ -10,7 +10,8 @@ import '../../../core/widgets/status_badge.dart';
 import '../widgets/contract_builder.dart';
 
 class ContractsTab extends StatefulWidget {
-  const ContractsTab({super.key});
+  final int? workspaceId;
+  const ContractsTab({super.key, this.workspaceId});
 
   @override
   State<ContractsTab> createState() => _ContractsTabState();
@@ -29,7 +30,7 @@ class _ContractsTabState extends State<ContractsTab> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {

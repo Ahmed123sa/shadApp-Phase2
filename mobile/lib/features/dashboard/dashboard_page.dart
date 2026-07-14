@@ -8,7 +8,8 @@ import '../onboarding/client_onboarding_screen.dart';
 import 'client_dashboard_screen.dart';
 
 class DashboardPage extends StatefulWidget {
-  const DashboardPage({super.key});
+  final int initialTab;
+  const DashboardPage({super.key, this.initialTab = 0});
 
   @override
   State<DashboardPage> createState() => _DashboardPageState();
@@ -103,7 +104,7 @@ class _DashboardPageState extends State<DashboardPage> with WidgetsBindingObserv
     }
 
     if (_isActiveWorkspace) {
-      return const ClientDashboardScreen();
+      return ClientDashboardScreen(initialTab: widget.initialTab);
     }
 
     return const ClientOnboardingScreen();

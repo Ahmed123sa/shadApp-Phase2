@@ -9,7 +9,8 @@ import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/error_state.dart';
 
 class FilesTab extends StatefulWidget {
-  const FilesTab({super.key});
+  final int? workspaceId;
+  const FilesTab({super.key, this.workspaceId});
 
   @override
   State<FilesTab> createState() => _FilesTabState();
@@ -30,7 +31,7 @@ class _FilesTabState extends State<FilesTab> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
@@ -53,10 +54,10 @@ class _FilesTabState extends State<FilesTab> {
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx', 'xls', 'xlsx'],
     );
-    if (result == null || result.files.isEmpty || _api.workspaceId == null) return;
+    if (result == null || result.files.isEmpty || widget.workspaceId == null) return;
     final file = File(result.files.single.path!);
     try {
-      await _api.multipartPost('/workspaces/${_api.workspaceId}/files', {}, file: file);
+      await _api.multipartPost('/workspaces/${widget.workspaceId}/files', {}, file: file);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم رفع الملف')));
       _load();
     } catch (_) {
@@ -90,9 +91,9 @@ class _FilesTabState extends State<FilesTab> {
         ),
       ),
     );
-    if (result != true || nameCtrl.text.trim().isEmpty || _api.workspaceId == null) return;
+    if (result != true || nameCtrl.text.trim().isEmpty || widget.workspaceId == null) return;
     try {
-      await _api.post('/workspaces/${_api.workspaceId}/document-definitions', {
+      await _api.post('/workspaces/${widget.workspaceId}/document-definitions', {
         'name': nameCtrl.text.trim(),
         'description': descCtrl.text.trim(),
         'is_required': isRequired.value,
@@ -118,7 +119,7 @@ class _FilesTabState extends State<FilesTab> {
     );
     if (confirm != true) return;
     try {
-      await _api.delete('/workspaces/${_api.workspaceId}/document-definitions/$defId');
+      await _api.delete('/workspaces/${widget.workspaceId}/document-definitions/$defId');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم حذف التعريف')));
         _load();
@@ -160,7 +161,7 @@ class _FilesTabState extends State<FilesTab> {
 
   String _formatFileSize(dynamic bytes) {
     if (bytes == null) return '';
-    final b = (bytes as num).toDouble();
+    final b = (double.tryParse(bytes?.toString() ?? '') ?? 0);
     if (b < 1024) return '${b.toStringAsFixed(0)} B';
     if (b < 1048576) return '${(b / 1024).toStringAsFixed(1)} KB';
     return '${(b / 1048576).toStringAsFixed(1)} MB';

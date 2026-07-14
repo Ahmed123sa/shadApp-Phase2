@@ -13,7 +13,7 @@ class ChatMessage extends Model
     protected $fillable = [
         'workspace_id', 'sender_type', 'sender_id', 'message',
         'type', 'file_url', 'requires_action', 'contract_id', 'approval_id',
-        'action_taken', 'action_result', 'responded_at',
+        'action_taken', 'action_result', 'responded_at', 'read_at',
     ];
 
     protected function casts(): array
@@ -22,6 +22,7 @@ class ChatMessage extends Model
             'requires_action' => 'boolean',
             'action_taken' => 'boolean',
             'responded_at' => 'datetime',
+            'read_at' => 'datetime',
         ];
     }
 

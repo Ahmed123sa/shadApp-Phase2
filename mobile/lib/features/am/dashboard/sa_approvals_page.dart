@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
 
@@ -27,9 +28,22 @@ class _SaApprovalsPageState extends State<SaApprovalsPage> {
     try {
       _contracts = await _fetchContracts(['sent', 'client_approved']);
       try {
-        final pData = await _api.get('/payments/pending');
-        final raw = pData['payments'] as List<dynamic>? ?? [];
-        _payments = raw.cast<Map<String, dynamic>>();
+        List<dynamic> allPayments = [];
+        int pPage = 1;
+        while (true) {
+          final pd = await _api.get('/payments/pending?page=$pPage');
+          final batch = safeList(pd['payments']);
+          if (batch.isEmpty) break;
+          allPayments.addAll(batch);
+          final lastPage = (pd['payments'] is Map ? pd['payments']['last_page'] : null) ?? 1;
+          if (pPage >= lastPage) break;
+          pPage++;
+        }
+        _payments = allPayments.cast<Map<String, dynamic>>().map((p) => {
+          ...p,
+          'type': 'payment',
+          'workspace_id': p['workspace_id'] ?? p['workspace']?['id'],
+        }).toList();
       } catch (_) {
         _payments = [];
       }
@@ -40,21 +54,41 @@ class _SaApprovalsPageState extends State<SaApprovalsPage> {
   Future<List<Map<String, dynamic>>> _fetchContracts(List<String> statuses) async {
     final results = <Map<String, dynamic>>[];
     try {
-      final data = await _api.get('/clients');
-      final clients = _safeList(data['clients']);
-      for (final client in clients) {
+      List<dynamic> allClients = [];
+      int page = 1;
+      while (true) {
+        final data = await _api.get('/clients?page=$page');
+        final batch = safeList(data['clients']);
+        if (batch.isEmpty) break;
+        allClients.addAll(batch);
+        final lastPage = (data['clients'] is Map ? data['clients']['last_page'] : null) ?? 1;
+        if (page >= lastPage) break;
+        page++;
+      }
+      for (final client in allClients) {
         final ws = client['workspace'] as Map<String, dynamic>?;
         if (ws == null) continue;
         try {
-          final contractsData = await _api.get('/workspaces/${ws['id']}/contracts');
-          final contracts = _safeList(contractsData['contracts']);
-          for (final c in contracts) {
+          List<dynamic> allContracts = [];
+          int cPage = 1;
+          while (true) {
+            final cd = await _api.get('/workspaces/${ws['id']}/contracts?page=$cPage');
+            final batch = safeList(cd['contracts']);
+            if (batch.isEmpty) break;
+            allContracts.addAll(batch);
+            final lastPage = (cd['contracts'] is Map ? cd['contracts']['last_page'] : null) ?? 1;
+            if (cPage >= lastPage) break;
+            cPage++;
+          }
+          for (final c in allContracts) {
             if (statuses.contains(c['status'])) {
               results.add({
                 'title': c['title'] ?? '',
                 'value': c['value'] ?? 0,
+                'currency': c['currency'] ?? 'SAR',
                 'company': client['company_name'] ?? '',
                 'client': client,
+                'workspace_id': ws['id'],
                 'type': 'contract',
               });
             }
@@ -66,8 +100,6 @@ class _SaApprovalsPageState extends State<SaApprovalsPage> {
     } catch (_) {}
     return results;
   }
-
-  List<dynamic> _safeList(dynamic v) => v is List ? v : [];
 
   List<Map<String, dynamic>> get _filteredItems {
     switch (_filterIndex) {
@@ -146,11 +178,16 @@ class _SaApprovalsPageState extends State<SaApprovalsPage> {
     final isContract = item['type'] == 'contract';
     final title = isContract ? 'اعتماد عقد — ${item['title']}' : 'اعتماد دفعة — ${item['company'] ?? ''}';
     final subtitle = isContract
-        ? '${item['company']} • ${(item['value'] as num?)?.toInt() ?? 0} ج.م'
-        : '${item['currency'] ?? ''} ${(item['amount'] as num?)?.toDouble().toStringAsFixed(0) ?? '0'}';
+        ? '${item['company']} • ${double.tryParse(item['value']?.toString() ?? '')?.toStringAsFixed(0) ?? '0'} ${item['currency'] ?? ''}'
+        : '${item['currency'] ?? ''} ${(double.tryParse(item['amount']?.toString() ?? '') ?? 0).toStringAsFixed(0)}';
 
     return GestureDetector(
-      onTap: () => _showDetail(item),
+      onTap: () {
+        final wsId = item['workspace_id'];
+        if (wsId == null) return;
+        final tab = isContract ? 2 : 3;
+        context.push('/am/workspace/$wsId?tab=$tab');
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
@@ -189,75 +226,6 @@ class _SaApprovalsPageState extends State<SaApprovalsPage> {
           ),
         ]),
       ),
-    );
-  }
-
-  void _showDetail(Map<String, dynamic> item) {
-    final isContract = item['type'] == 'contract';
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.85,
-        minChildSize: 0.3,
-        expand: false,
-        builder: (_, scrollController) => Padding(
-          padding: const EdgeInsets.all(16),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: ShadColors.cardBorder, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(isContract ? 'تفاصيل العقد' : 'تفاصيل الدفعة', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
-              const SizedBox(height: 16),
-              _detailRow('العنوان', item['title'] ?? ''),
-              _detailRow('الشركة', item['company'] ?? ''),
-              if (isContract)
-                _detailRow('القيمة', '${(item['value'] as num?)?.toInt() ?? 0} ج.م')
-              else ...[
-                _detailRow('المبلغ', '${item['currency'] ?? ''} ${(item['amount'] as num?)?.toDouble().toStringAsFixed(0) ?? '0'}'),
-                _detailRow('طريقة الدفع', item['method_type'] ?? ''),
-              ],
-              const SizedBox(height: 20),
-              Row(children: [
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(backgroundColor: ShadColors.gold, foregroundColor: ShadColors.background),
-                    child: const Text('اعتماد', style: TextStyle(fontFamily: 'Archivo')),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(side: const BorderSide(color: ShadColors.error)),
-                    child: const Text('رفض', style: TextStyle(color: ShadColors.error, fontFamily: 'Archivo')),
-                  ),
-                ),
-              ]),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(children: [
-        Text(label, style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-        const Spacer(),
-        Flexible(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo'), textAlign: TextAlign.end)),
-      ]),
     );
   }
 }
