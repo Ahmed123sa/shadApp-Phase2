@@ -141,12 +141,13 @@ class AuthController extends Controller
 
         $user = $request->user();
 
+        $updateData = $request->only(['name', 'official_email']);
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
-            $user->avatar_url = Storage::url($path);
+            $updateData['avatar_url'] = Storage::url($path);
         }
 
-        $user->update($request->only(['name', 'official_email']));
+        $user->update($updateData);
 
         return response()->json(['user' => $user->fresh()]);
     }

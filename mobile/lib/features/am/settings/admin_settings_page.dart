@@ -260,76 +260,88 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
             const SizedBox(height: 20),
             _sectionHeader(Icons.draw_outlined, 'التوقيع'),
             const SizedBox(height: 8),
+
+            // Card 1: التوقيع الحالي
+            if (_existingSigUrl != null || _existingSigText != null) ...[
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: ShadColors.card,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ShadColors.cardBorder),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    Icon(Icons.verified, size: 14, color: ShadColors.success),
+                    const SizedBox(width: 6),
+                    const Text('التوقيع الحالي', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo')),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: _deleteSignature,
+                      child: const Icon(Icons.delete_outline, size: 16, color: ShadColors.error),
+                    ),
+                  ]),
+                  const SizedBox(height: 10),
+                  if (_existingSigUrl != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ShadColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: ShadColors.cardBorder),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.network(_existingSigUrl!, height: 50, fit: BoxFit.contain),
+                      ),
+                    ),
+                  if (_existingSigText != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: ShadColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: ShadColors.cardBorder),
+                      ),
+                      child: Center(
+                        child: Text(_existingSigText!, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold)),
+                      ),
+                    ),
+                ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            // Card 2: توقيع جديد
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: ShadColors.card,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ShadColors.cardBorder),
               ),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                // Existing signature display
-                if (_existingSigUrl != null) ...[
-                  _subLabel('التوقيع الحالي'),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: ShadColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ShadColors.cardBorder),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: Image.network(_existingSigUrl!, height: 60, fit: BoxFit.contain),
-                    ),
+                Row(children: [
+                  Icon(Icons.add_circle_outline, size: 14, color: ShadColors.gold),
+                  const SizedBox(width: 6),
+                  Text(
+                    (_existingSigUrl != null || _existingSigText != null) ? 'توقيع جديد' : 'أضف توقيعك',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo'),
                   ),
-                  const SizedBox(height: 12),
-                ],
-                if (_existingSigText != null) ...[
-                  _subLabel('التوقيع الحالي'),
-                  const SizedBox(height: 6),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: ShadColors.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ShadColors.cardBorder),
-                    ),
-                    child: Center(
-                      child: Text(_existingSigText!, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold)),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
-                if (_existingSigUrl != null || _existingSigText != null)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: _deleteSignature,
-                      icon: const Icon(Icons.delete_outline, size: 16, color: ShadColors.error),
-                      label: const Text('حذف التوقيع', style: TextStyle(color: ShadColors.error, fontSize: 12, fontFamily: 'Archivo')),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: ShadColors.error),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                      ),
-                    ),
-                  ),
+                ]),
+                const SizedBox(height: 12),
 
-                if (_existingSigUrl != null || _existingSigText != null) const SizedBox(height: 16),
-
-                // Mode selection
+                // Mode chips
                 Row(mainAxisAlignment: MainAxisAlignment.center, children: [
                   _modeChip('draw', 'رسم', Icons.brush),
                   const SizedBox(width: 8),
                   _modeChip('text', 'نص', Icons.text_fields),
                 ]),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
-                // Upload image button
+                // Upload image button (always visible)
                 SizedBox(
                   width: double.infinity,
                   child: OutlinedButton.icon(
@@ -343,14 +355,14 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
 
                 // Draw mode
                 if (_sigMode == 'draw') ...[
                   _subLabel('وقّع هنا'),
                   const SizedBox(height: 6),
                   Container(
-                    height: 200,
+                    height: 180,
                     decoration: BoxDecoration(
                       color: ShadColors.black,
                       borderRadius: BorderRadius.circular(10),
@@ -372,7 +384,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Row(children: [
                     Expanded(child: OutlinedButton.icon(
                       onPressed: _clearStrokes,
@@ -385,7 +397,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                     )),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton.icon(
                         onPressed: _saving ? null : _saveSignature,
@@ -410,7 +422,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                   const SizedBox(height: 6),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: ShadColors.black,
                       borderRadius: BorderRadius.circular(10),
@@ -419,16 +431,16 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                     child: TextField(
                       controller: _sigTextController,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold),
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w400, fontFamily: 'DancingScript', color: ShadColors.gold),
                       decoration: const InputDecoration(
                         hintText: 'اكتب توقيعك',
-                        hintStyle: TextStyle(color: ShadColors.textDisabled, fontSize: 20),
+                        hintStyle: TextStyle(color: ShadColors.textDisabled, fontSize: 18),
                         border: InputBorder.none,
                       ),
                       maxLines: 1,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(

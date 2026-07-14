@@ -645,7 +645,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   Future<void> _showAllMeetings() async {
     try {
       final data = await _api.get('/all-meetings');
-      final meetings = data['meetings'] as List<dynamic>? ?? [];
+      final meetings = safeList(data['meetings']);
       if (!mounted) return;
       showModalBottomSheet(
         context: context,

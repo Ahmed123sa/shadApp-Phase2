@@ -47,7 +47,7 @@ class _ReportsTabState extends State<ReportsTab> {
       } else {
         _stats = reportsResult;
       }
-      _logs = (logsResult['logs'] as List<dynamic>?) ?? [];
+      _logs = safeList(logsResult['logs']);
     } catch (e) {
       if (mounted) _error = AppLocalizations.of(context)!.errorOccurred;
     }
