@@ -77,10 +77,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
 
   Future<void> _pickAvatar() async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result == null || result.files.single.path == null) return;
-    final file = File(result.files.single.path!);
+    if (result == null || result.files.single.bytes == null) return;
     try {
-      final response = await _api.multipartPost('/auth/me', {}, file: file, fileField: 'avatar');
+      final f = result.files.single;
+      final response = await _api.multipartPost('/auth/me', {}, bytes: f.bytes, filename: f.name, fileField: 'avatar');
       final user = response['user'] as Map<String, dynamic>?;
       if (user != null) _avatarUrl = user['avatar_url'] as String?;
       if (mounted) setState(() {});
