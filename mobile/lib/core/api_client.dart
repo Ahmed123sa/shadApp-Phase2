@@ -95,8 +95,11 @@ class ApiClient {
     final base = baseUrl.replaceFirst('/api', '');
     String cleaned = url;
     if (cleaned.startsWith('/')) cleaned = cleaned.substring(1);
-    if (cleaned.startsWith('storage/')) return '$base/$cleaned';
-    return '$base/storage/$cleaned';
+    if (cleaned.startsWith('storage/')) {
+      cleaned = cleaned.replaceFirst('storage/', 'files/');
+      return '$base/$cleaned';
+    }
+    return '$base/files/$cleaned';
   }
 
   Future<void> setBaseUrl(String url) async {
