@@ -80,8 +80,10 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     if (result == null || result.files.single.path == null) return;
     final file = File(result.files.single.path!);
     try {
-      await _api.multipartPost('/auth/me', {}, file: file, fileField: 'avatar');
-      await _load();
+      final response = await _api.multipartPost('/auth/me', {}, file: file, fileField: 'avatar');
+      final user = response['user'] as Map<String, dynamic>?;
+      if (user != null) _avatarUrl = user['avatar_url'] as String?;
+      if (mounted) setState(() {});
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم تغيير الصورة')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل تغيير الصورة: $e')));
