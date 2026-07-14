@@ -31,15 +31,24 @@ class _ReportsTabState extends State<ReportsTab> {
   Future<void> _load() async {
     setState(() { _loading = true; _error = null; });
     try {
-      final results = await Future.wait([
-        _api.get('/reports'),
-        _api.get('/audit-logs'),
-      ]);
-      _stats = results[0];
-      _logs = (results[1]['logs'] as List<dynamic>?) ?? [];
-    } on ServerException catch (e) {
-      _error = e.message;
-    } catch (_) {
+      final reportsFuture = _api.get('/reports').catchError((e) {
+        return <String, dynamic>{'error': true, 'message': e.toString()};
+      });
+      final logsFuture = _api.get('/audit-logs').catchError((e) {
+        return <String, dynamic>{'logs': []};
+      });
+
+      final results = await Future.wait([reportsFuture, logsFuture]);
+      final reportsResult = results[0];
+      final logsResult = results[1];
+
+      if (reportsResult['error'] == true) {
+        _error = reportsResult['message']?.toString() ?? 'خطأ في تحميل التقارير';
+      } else {
+        _stats = reportsResult;
+      }
+      _logs = (logsResult['logs'] as List<dynamic>?) ?? [];
+    } catch (e) {
       if (mounted) _error = AppLocalizations.of(context)!.errorOccurred;
     }
     if (mounted) setState(() => _loading = false);

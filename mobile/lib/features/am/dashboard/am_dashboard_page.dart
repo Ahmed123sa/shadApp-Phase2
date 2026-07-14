@@ -7,6 +7,10 @@ import '../../../core/locale_provider.dart';
 import '../../../core/reverb_service.dart';
 import '../../../core/widgets/shad_logo.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
+import 'sa_approvals_page.dart';
+import 'sa_clients_page.dart';
+import 'sa_team_page.dart';
+import '../settings/admin_settings_page.dart';
 
 class AmDashboardPage extends StatefulWidget {
   const AmDashboardPage({super.key});
@@ -23,8 +27,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   List<dynamic> _filteredClients = [];
   List<dynamic> _allManagers = [];
   List<dynamic> _pendingPayments = [];
+  List<Map<String, dynamic>> _pendingContracts = [];
+  List<dynamic> _allContracts = [];
   bool _loading = true;
   int _unreadNotifs = 0;
+  int _selectedIndex = 0;
   Timer? _pollTimer;
 
   @override
@@ -65,6 +72,19 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       if (_isSA) {
         final data = await _api.get('/account-managers');
         _allManagers = data['managers'] as List<dynamic>? ?? [];
+        _pendingContracts = await _fetchAllContracts(['sent', 'client_approved']);
+        try {
+          final allContractsData = await _api.get('/all-contracts');
+          _allContracts = safeList(allContractsData['contracts']);
+        } catch (_) {
+          _allContracts = [];
+        }
+        try {
+          final pData = await _api.get('/payments/pending');
+          _pendingPayments = pData['payments'] as List<dynamic>? ?? [];
+        } catch (_) {
+          _pendingPayments = [];
+        }
       } else {
         final data = await _api.get('/clients');
         _allClients = safeList(data['clients']);
@@ -294,7 +314,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     final loc = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('d.Contracts', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
+        title: const Text('Admin', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay', color: ShadColors.gold)),
         leading: const Padding(
           padding: EdgeInsets.only(left: 8),
           child: ShadLogo(size: 28, showText: false),
@@ -320,39 +340,199 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         onRefresh: _load,
         child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: _isSA ? [
-                _buildQuickStats(),
-                const SizedBox(height: 16),
-                _buildFeaturedCards(),
-                const SizedBox(height: 16),
-                Text('Account Managers / مدراء الحسابات', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                const SizedBox(height: 8),
-                if (_allManagers.isNotEmpty)
-                  ..._allManagers.map((m) => _managerCard(m)),
-                if (_allManagers.isEmpty)
-                  _buildEmptyState(),
-              ] : [
-                _buildSearchBar(),
-                const SizedBox(height: 16),
-                _buildQuickStats(),
-                const SizedBox(height: 16),
-                _buildFeaturedCards(),
-                const SizedBox(height: 16),
-                if (_filteredClients.isEmpty && _searchController.text.isNotEmpty)
-                  _buildNoResults()
-                else if (_allClients.isEmpty)
-                  _buildEmptyState()
-                else
-                  Text('All Clients / كل العملاء', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-                const SizedBox(height: 8),
-                if (_filteredClients.isNotEmpty)
-                  ..._filteredClients.map((c) => _clientCard(c)),
-              ],
-            ),
+          : _buildTabContent(),
       ),
+      bottomNavigationBar: _isSA
+          ? NavigationBar(
+              selectedIndex: _selectedIndex,
+              onDestinationSelected: (i) => setState(() => _selectedIndex = i),
+              backgroundColor: const Color(0xFF0D0D0D),
+              indicatorColor: ShadColors.crimson.withAlpha(40),
+              height: 65,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              destinations: const [
+                NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle, color: ShadColors.gold), label: 'الموافقات'),
+                NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
+                NavigationDestination(icon: Icon(Icons.supervisor_account_outlined), selectedIcon: Icon(Icons.supervisor_account, color: ShadColors.gold), label: 'الفريق'),
+                NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
+              ],
+            )
+          : null,
     );
+  }
+
+  Widget _buildTabContent() {
+    if (!_isSA) {
+      return ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _buildSearchBar(),
+          const SizedBox(height: 16),
+          _buildQuickStats(),
+          const SizedBox(height: 16),
+          _buildFeaturedCards(),
+          const SizedBox(height: 16),
+          if (_filteredClients.isEmpty && _searchController.text.isNotEmpty)
+            _buildNoResults()
+          else if (_allClients.isEmpty)
+            _buildEmptyState()
+          else
+            Text('All Clients / كل العملاء', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+          const SizedBox(height: 8),
+          if (_filteredClients.isNotEmpty)
+            ..._filteredClients.map((c) => _clientCard(c)),
+        ],
+      );
+    }
+    switch (_selectedIndex) {
+      case 0: return _buildHomeTab();
+      case 1: return _buildApprovalsTab();
+      case 2: return _buildClientsTab();
+      case 3: return _buildTeamTab();
+      case 4: return _buildSettingsTab();
+      default: return _buildHomeTab();
+    }
+  }
+
+  Widget _buildHomeTab() {
+    final totalClients = _allManagers.fold<int>(0, (sum, m) => sum + ((m['managed_clients_count'] as int? ?? 0)));
+    final activeContracts = _allContracts.where((c) => c['status'] == 'company_approved' || c['status'] == 'completed').length;
+    final totalPending = _pendingContracts.length + _pendingPayments.length;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Stats Grid 3x2
+        Row(children: [
+          Expanded(child: _homeStatCard('إجمالي العملاء', '$totalClients', Icons.people, ShadColors.sent)),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('العقود النشطة', '$activeContracts', Icons.description, ShadColors.gold)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _homeStatCard('مدفوعات معلقة', '${_pendingPayments.length}', Icons.payments, ShadColors.warning)),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('موافقات معلّقة', '$totalPending', Icons.pending_actions, ShadColors.crimson)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _homeStatCard('التقارير', '', Icons.bar_chart, ShadColors.gold, onTap: () => context.push('/am/reports'))),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('الاجتماعات', '', Icons.videocam, ShadColors.sent, onTap: _showAllMeetings)),
+        ]),
+        const SizedBox(height: 20),
+        // Latest Pending Approvals
+        Row(children: [
+          const Text('آخر الموافقات المعلّقة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 1),
+            child: const Text('عرض الكل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (_pendingContracts.isEmpty && _pendingPayments.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: Text('لا توجد موافقات معلّقة', style: TextStyle(fontSize: 12, color: ShadColors.textDisabled, fontFamily: 'Archivo'))),
+          )
+        else ...[
+          if (_pendingContracts.isNotEmpty)
+            ..._pendingContracts.take(2).map((c) => _approvalItem(
+              title: 'اعتماد عقد — ${c['title'] ?? ''}',
+              subtitle: '${c['company'] ?? ''} • ${(c['value'] as num?)?.toInt() ?? 0} ج.م',
+              isContract: true,
+            )),
+          if (_pendingPayments.isNotEmpty)
+            ..._pendingPayments.take(2).map((p) {
+              final client = p['workspace']?['client'] as Map<String, dynamic>?;
+              return _approvalItem(
+                title: 'اعتماد دفعة — ${client?['company_name'] ?? 'عميل'}',
+                subtitle: '${p['currency'] ?? ''} ${(p['amount'] as num?)?.toDouble().toStringAsFixed(0) ?? '0'}',
+                isContract: false,
+              );
+            }),
+        ],
+        const SizedBox(height: 20),
+        // Team Section
+        Row(children: [
+          const Text('فريق العمل', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 3),
+            child: const Text('عرض الكل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (_allManagers.isNotEmpty)
+          ..._allManagers.take(3).map((m) => _managerCard(m)),
+        if (_allManagers.isEmpty)
+          _buildEmptyState(),
+      ],
+    );
+  }
+
+  Widget _homeStatCard(String label, String value, IconData icon, Color color, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ShadColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ShadColors.cardBorder),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, size: 16, color: color),
+          const Spacer(),
+          if (value.isNotEmpty) Text(value, style: TextStyle(fontSize: 19, fontWeight: FontWeight.w600, color: color, fontFamily: 'PlayfairDisplay')),
+        ]),
+        const SizedBox(height: 4),
+        Text(label, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+      ]),
+    ),
+    );
+  }
+
+  Widget _approvalItem({required String title, required String subtitle, required bool isContract}) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: ShadColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ShadColors.cardBorder),
+      ),
+      child: Row(children: [
+        Container(width: 3, height: 48, decoration: BoxDecoration(color: isContract ? ShadColors.gold : ShadColors.sent, borderRadius: const BorderRadius.horizontal(right: Radius.circular(10)))),
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+              const SizedBox(height: 2),
+              Text(subtitle, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+            ]),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _buildApprovalsTab() {
+    return const SaApprovalsPage();
+  }
+
+  Widget _buildClientsTab() {
+    return const SaClientsPage();
+  }
+
+  Widget _buildTeamTab() {
+    return const SaTeamPage();
+  }
+
+  Widget _buildSettingsTab() {
+    return const AdminSettingsPage();
   }
 
   Widget _buildSearchBar() {
@@ -449,7 +629,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   Future<void> _showAllContracts() async {
     try {
       final data = await _api.get('/all-contracts');
-      final contracts = data['contracts'] as List<dynamic>? ?? [];
+      final contracts = safeList(data['contracts']);
       if (!mounted) return;
       showModalBottomSheet(
         context: context,
@@ -1008,52 +1188,87 @@ class _AllMeetingsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-      child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Text('كل الاجتماعات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
-          const Spacer(),
-          IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
-        ]),
-        const Divider(),
-        if (meetings.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('لا توجد اجتماعات', style: TextStyle(color: ShadColors.textSecondary))),
-          )
-        else
-          Container(
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: meetings.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (_, i) {
-                final m = meetings[i];
-                final client = m['workspace']?['client'] as Map<String, dynamic>?;
-                final status = m['status'] as String? ?? '';
-                final statusColor = status == 'completed' ? ShadColors.success : status == 'scheduled' ? ShadColors.sent : ShadColors.textSecondary;
-                final statusLabel = status == 'scheduled' ? 'مجدول' : status == 'completed' ? 'مكتمل' : status == 'cancelled' ? 'ملغي' : status;
-                String? dateStr;
-                try {
-                  final dt = DateTime.parse(m['scheduled_at'] ?? '');
-                  dateStr = '${dt.year}/${dt.month}/${dt.day}';
-                } catch (_) {}
-                return ListTile(
-                  leading: const Icon(Icons.videocam, size: 24, color: ShadColors.gold),
-                  title: Text(m['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  subtitle: Text('${client?['company_name'] ?? ''} • ${dateStr ?? ''}', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
-                  trailing: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(color: statusColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
-                    child: Text(statusLabel, style: TextStyle(fontSize: 10, color: statusColor)),
-                  ),
-                );
-              },
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.85,
+      minChildSize: 0.3,
+      expand: false,
+      builder: (_, scrollController) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Center(
+            child: Container(
+              width: 40, height: 4,
+              decoration: BoxDecoration(color: ShadColors.cardBorder, borderRadius: BorderRadius.circular(2)),
             ),
           ),
-      ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            const Text('الاجتماعات', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: ShadColors.crimson.withAlpha(30), borderRadius: BorderRadius.circular(10)),
+              child: Text('${meetings.length}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+            ),
+            const Spacer(),
+            IconButton(icon: const Icon(Icons.close, size: 20, color: ShadColors.textSecondary), onPressed: () => Navigator.pop(context)),
+          ]),
+          const SizedBox(height: 8),
+          Expanded(
+            child: meetings.isEmpty
+                ? const Center(child: Text('لا توجد اجتماعات', style: TextStyle(fontSize: 13, color: ShadColors.textDisabled, fontFamily: 'Archivo')))
+                : ListView.separated(
+                    controller: scrollController,
+                    itemCount: meetings.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (_, i) {
+                      final m = meetings[i];
+                      final client = m['workspace']?['client'] as Map<String, dynamic>?;
+                      final status = m['status'] as String? ?? '';
+                      final statusColor = status == 'completed' ? ShadColors.success : status == 'scheduled' ? ShadColors.sent : ShadColors.textSecondary;
+                      final statusLabel = status == 'scheduled' ? 'مجدول' : status == 'completed' ? 'مكتمل' : status == 'cancelled' ? 'ملغي' : status;
+                      String? dateStr;
+                      try {
+                        final dt = DateTime.parse(m['scheduled_at'] ?? '');
+                        dateStr = '${dt.year}/${dt.month}/${dt.day}';
+                      } catch (_) {}
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: ShadColors.card,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: ShadColors.cardBorder),
+                        ),
+                        child: Row(children: [
+                          Container(
+                            width: 36, height: 36,
+                            decoration: BoxDecoration(color: ShadColors.gold.withAlpha(20), borderRadius: BorderRadius.circular(8)),
+                            child: const Icon(Icons.videocam, size: 18, color: ShadColors.gold),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                              Text(m['title'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+                              const SizedBox(height: 2),
+                              Text('${client?['company_name'] ?? ''} • ${dateStr ?? ''}', style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+                            ]),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: statusColor.withAlpha(20),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor, fontFamily: 'Archivo')),
+                          ),
+                        ]),
+                      );
+                    },
+                  ),
+          ),
+        ]),
+      ),
     );
   }
 }

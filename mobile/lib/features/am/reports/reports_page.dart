@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../am/workspace/reports_tab.dart';
-import '../../../core/widgets/shad_logo.dart';
+import '../../../core/theme.dart';
 
 class ReportsPage extends StatelessWidget {
   const ReportsPage({super.key});
@@ -9,15 +9,8 @@ class ReportsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const ShadLogo(size: 24, showText: false),
-      const SizedBox(width: 8),
-      const Text('Reports & Statistics / التقارير والإحصائيات'),
-    ],
-  ),
-),
+        title: const Text('التقارير', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay', color: ShadColors.gold)),
+      ),
       body: const ReportsTab(),
     );
   }
