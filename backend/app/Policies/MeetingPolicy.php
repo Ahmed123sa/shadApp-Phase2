@@ -24,4 +24,16 @@ class MeetingPolicy
     {
         return $user instanceof \App\Models\User && $user->isAccountManager();
     }
+
+    public function update($user, Meeting $meeting): bool
+    {
+        if ($user instanceof \App\Models\Client) return false;
+        return $user instanceof \App\Models\User && ($user->isSuperAdmin() || $meeting->workspace->manager_id === $user->id);
+    }
+
+    public function delete($user, Meeting $meeting): bool
+    {
+        if ($user instanceof \App\Models\Client) return false;
+        return $user instanceof \App\Models\User && ($user->isSuperAdmin() || $meeting->workspace->manager_id === $user->id);
+    }
 }

@@ -51,6 +51,45 @@ class _MeetingsTabState extends State<MeetingsTab> {
     );
   }
 
+  void _showEditSheet(dynamic m) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _EditMeetingForm(meeting: m, workspaceId: widget.workspaceId, onUpdated: _load),
+    );
+  }
+
+  Future<void> _cancelMeeting(dynamic m) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إلغاء الاجتماع'),
+        content: Text('هل تريد إلغاء "${m['title']}"؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ابقاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error),
+            child: const Text('إلغاء الاجتماع', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final wsId = widget.workspaceId ?? _api.workspaceId;
+    if (wsId == null) return;
+    try {
+      await _api.delete('/workspaces/$wsId/meetings/${m['id']}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم إلغاء الاجتماع')));
+        _load();
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل إلغاء الاجتماع')));
+    }
+  }
+
   String _formatDate(String? dt) {
     if (dt == null) return '';
     try {
@@ -100,6 +139,8 @@ class _MeetingsTabState extends State<MeetingsTab> {
   }
 
   Widget _meetingCard(dynamic m) {
+    final isScheduled = m['status'] == 'scheduled';
+    final isSA = _api.role == 'super_admin';
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -169,6 +210,26 @@ class _MeetingsTabState extends State<MeetingsTab> {
                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم نسخ الرابط')));
                 },
                 tooltip: 'نسخ الرابط',
+              ),
+            ]),
+          ],
+          if (isScheduled && !isSA) ...[
+            const SizedBox(height: 12),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showEditSheet(m),
+                  icon: const Icon(Icons.edit, size: 16),
+                  label: const Text('تعديل'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _cancelMeeting(m),
+                  icon: const Icon(Icons.cancel_outlined, size: 16, color: ShadColors.error),
+                  label: Text('إلغاء', style: TextStyle(color: ShadColors.error)),
+                ),
               ),
             ]),
           ],
@@ -327,7 +388,149 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
               onPressed: _saving ? null : _submit,
               child: _saving
                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Text('إنشاء الاجتماع'),
+                   : const Text('إنشاء الاجتماع'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EditMeetingForm extends StatefulWidget {
+  final dynamic meeting;
+  final int? workspaceId;
+  final VoidCallback onUpdated;
+  const _EditMeetingForm({required this.meeting, this.workspaceId, required this.onUpdated});
+
+  @override
+  State<_EditMeetingForm> createState() => _EditMeetingFormState();
+}
+
+class _EditMeetingFormState extends State<_EditMeetingForm> {
+  final _api = ApiClient();
+  late final TextEditingController _titleController;
+  late final TextEditingController _notesController;
+  late DateTime _date;
+  late TimeOfDay _time;
+  late int _duration;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final m = widget.meeting;
+    _titleController = TextEditingController(text: m['title'] ?? '');
+    _notesController = TextEditingController(text: m['notes'] ?? '');
+    try {
+      _date = DateTime.parse(m['scheduled_at']);
+      _time = TimeOfDay(hour: _date.hour, minute: _date.minute);
+      _date = DateTime(_date.year, _date.month, _date.day);
+    } catch (_) {
+      _date = DateTime.now().add(const Duration(days: 1));
+      _time = const TimeOfDay(hour: 10, minute: 0);
+    }
+    _duration = m['duration_minutes'] ?? 30;
+  }
+
+  Future<void> _submit() async {
+    if (_titleController.text.trim().isEmpty) return;
+    setState(() => _saving = true);
+    final scheduledAt = DateTime(_date.year, _date.month, _date.day, _time.hour, _time.minute);
+    final wsId = widget.workspaceId ?? _api.workspaceId;
+    if (wsId == null) return;
+    try {
+      await _api.put('/workspaces/$wsId/meetings/${widget.meeting['id']}', {
+        'title': _titleController.text.trim(),
+        'scheduled_at': scheduledAt.toIso8601String(),
+        'duration_minutes': _duration,
+        'notes': _notesController.text.trim(),
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم تحديث الاجتماع')));
+        Navigator.pop(context);
+        widget.onUpdated();
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تحديث الاجتماع')));
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(context).viewInsets.bottom + 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Text('تعديل الاجتماع', style: ShadTypography.cardTitle),
+            const Spacer(),
+            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          ]),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _titleController,
+            decoration: const InputDecoration(labelText: 'عنوان الاجتماع *'),
+          ),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final d = await showDatePicker(context: context, initialDate: _date, firstDate: DateTime.now(), lastDate: DateTime.now().add(const Duration(days: 365)));
+                  if (d != null) setState(() => _date = d);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'التاريخ'),
+                  child: Text('${_date.year}/${_date.month}/${_date.day}'),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  final t = await showTimePicker(context: context, initialTime: _time);
+                  if (t != null) setState(() => _time = t);
+                },
+                child: InputDecorator(
+                  decoration: const InputDecoration(labelText: 'الوقت'),
+                  child: Text('${_time.hour.toString().padLeft(2, '0')}:${_time.minute.toString().padLeft(2, '0')}'),
+                ),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<int>(
+            initialValue: _duration,
+            decoration: const InputDecoration(labelText: 'المدة (دقيقة)'),
+            items: [15, 30, 45, 60, 90, 120].map((d) => DropdownMenuItem(value: d, child: Text('$d دقيقة'))).toList(),
+            onChanged: (v) { if (v != null) setState(() => _duration = v); },
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notesController,
+            decoration: const InputDecoration(labelText: 'ملاحظات'),
+            maxLines: 2,
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _saving ? null : _submit,
+              child: _saving
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('حفظ التعديلات'),
             ),
           ),
         ],

@@ -102,7 +102,7 @@ class ContractController extends Controller
     public function update(UpdateContractRequest $request, Contract $contract): JsonResponse
     {
 
-        $contract->update($request->only(['title', 'value', 'currency', 'start_date', 'end_date']));
+        $contract->update($request->only(['title', 'value', 'currency', 'start_date', 'end_date', 'contract_type']));
 
         if ($request->has('clauses')) {
             $contract->clauses()->delete();
@@ -182,6 +182,7 @@ class ContractController extends Controller
         $contract->update([
             'status' => $status,
             'client_signed_at' => $request->action === 'approved' ? now() : null,
+            'edit_reason' => $request->action === 'edit_requested' ? ($request->reason ?? null) : null,
         ]);
 
         AuditLog::create([
@@ -193,6 +194,11 @@ class ContractController extends Controller
 
         if ($request->action === 'approved') {
             event(new ContractClientApproved($contract));
+        } elseif ($request->action === 'edit_requested') {
+            $manager = $contract->workspace?->manager;
+            if ($manager) {
+                $manager->notify(new \App\Notifications\ContractEditRequestedNotification($contract));
+            }
         }
 
         return response()->json(['contract' => $contract->fresh()]);

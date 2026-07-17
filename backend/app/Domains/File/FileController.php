@@ -9,6 +9,8 @@ use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use App\Models\Payment;
+use App\Models\ContractRequiredDocument;
 use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
@@ -18,7 +20,49 @@ class FileController extends Controller
         $files = $workspace->files()->with('documentDefinition', 'reviewer')->latest()->get();
         $definitions = $workspace->documentDefinitions()->orderBy('sort_order')->get();
 
-        return response()->json(['files' => $files, 'definitions' => $definitions]);
+        $files->each(function ($file) {
+            $file->tag = $this->computeTag($file);
+        });
+
+        $payments = $workspace->payments()
+            ->whereNotNull('proof_file_url')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($payment) {
+                $urls = is_array($payment->proof_file_url) ? $payment->proof_file_url : [];
+                return [
+                    'id' => 'payment-' . $payment->id,
+                    'payment_id' => $payment->id,
+                    'name' => 'إثبات دفع #' . $payment->id,
+                    'tag' => 'إثبات الدفع',
+                    'file_url' => $urls[0] ?? null,
+                    'file_urls' => $urls,
+                    'amount' => $payment->amount,
+                    'currency' => $payment->currency,
+                    'status' => $payment->status,
+                    'created_at' => $payment->created_at,
+                    'source' => 'payment',
+                ];
+            });
+
+        return response()->json(['files' => $files, 'definitions' => $definitions, 'paymentFiles' => $payments]);
+    }
+
+    private function computeTag(FileEntry $file): string
+    {
+        if ($file->documentDefinition) {
+            return $file->documentDefinition->name;
+        }
+        if ($file->contractRequiredDocument) {
+            return 'مستند مطلوب';
+        }
+        if ($file->contract_id) {
+            return 'مرفق عقد';
+        }
+        if ($file->approval_id) {
+            return 'مرفق موافقة';
+        }
+        return 'عام';
     }
 
     public function upload(Request $request, Workspace $workspace): JsonResponse

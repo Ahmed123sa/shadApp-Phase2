@@ -122,6 +122,7 @@ class ApprovalController extends Controller
             'client_action' => $request->action,
             'signature' => $signature,
             'responded_at' => now(),
+            'reason' => $request->input('reason'),
         ]);
 
         // Generate PDF certificate on approval

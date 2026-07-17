@@ -32,12 +32,14 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   bool _loading = true;
   int _unreadNotifs = 0;
   int _selectedIndex = 0;
+  int _badgeApprovals = 0;
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadNotifs();
     _searchController.addListener(_filter);
     _setupRealtimeNotifications();
     _pollTimer = Timer.periodic(const Duration(seconds: 60), (_) {
@@ -111,6 +113,10 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     try {
       final data = await _api.get('/notifications');
       _unreadNotifs = int.tryParse(data['unread_count']?.toString() ?? '') ?? 0;
+    } catch (_) {}
+    try {
+      final data = await _api.get('/badge-counts');
+      _badgeApprovals = int.tryParse(data['approvals']?.toString() ?? '') ?? 0;
     } catch (_) {}
     if (mounted) setState(() {});
   }
@@ -352,12 +358,16 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               indicatorColor: ShadColors.crimson.withAlpha(40),
               height: 65,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: const [
-                NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
-                NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle, color: ShadColors.gold), label: 'الموافقات'),
-                NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
-                NavigationDestination(icon: Icon(Icons.supervisor_account_outlined), selectedIcon: Icon(Icons.supervisor_account, color: ShadColors.gold), label: 'الفريق'),
-                NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
+              destinations: [
+                const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                NavigationDestination(
+                  icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
+                  selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),
+                  label: 'الموافقات',
+                ),
+                const NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
+                const NavigationDestination(icon: Icon(Icons.supervisor_account_outlined), selectedIcon: Icon(Icons.supervisor_account, color: ShadColors.gold), label: 'الفريق'),
+                const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
               ],
             )
           : null,

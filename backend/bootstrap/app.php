@@ -17,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\HandleCors::class,
             \App\Http\Middleware\Localization::class,
         ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\UpdateLastSeen::class,
+        ]);
         $middleware->alias([
             'auth.any' => \App\Http\Middleware\AuthAny::class,
         ]);

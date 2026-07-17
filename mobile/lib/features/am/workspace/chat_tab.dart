@@ -8,6 +8,7 @@ import '../../../core/reverb_service.dart';
 import '../../../core/theme.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../../core/widgets/chat_contract_card.dart';
+import '../../../core/widgets/meeting_chip.dart';
 import '../widgets/contract_builder.dart';
 
 class ChatTab extends StatefulWidget {
@@ -26,13 +27,18 @@ class _ChatTabState extends State<ChatTab> {
   List<dynamic> _messages = [];
   bool _loading = true;
   Timer? _pollTimer;
+  Map<String, dynamic>? _workspaceData;
+  Map<String, dynamic>? _nextMeeting;
+  bool _requestApproval = false;
   int? get _wsId => widget.workspaceId ?? _api.workspaceId;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    _load().then((_) => _markRead());
+    _loadWorkspace();
     _startPolling();
+    _scrollController.addListener(_onScroll);
     final wsId = _wsId;
     if (wsId != null) {
       final reverb = ReverbService();
@@ -51,7 +57,27 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   void _startPolling() {
-    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) => _load());
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _load();
+      _loadWorkspace();
+    });
+  }
+
+  Future<void> _loadWorkspace() async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    try {
+      final data = await _api.get('/workspaces/$wsId');
+      final nm = data['nextMeeting'] as Map<String, dynamic>?;
+      if (mounted) {
+        setState(() {
+          _workspaceData = data['workspace'] as Map<String, dynamic>?;
+          _nextMeeting = nm;
+        });
+      }
+    } catch (e) {
+      debugPrint('[chat_tab] _loadWorkspace error: $e');
+    }
   }
 
   Future<void> _load() async {
@@ -60,11 +86,21 @@ class _ChatTabState extends State<ChatTab> {
     try {
       final data = await _api.get('/workspaces/$wsId/chat');
       _messages = data['messages'] as List<dynamic>? ?? [];
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[chat_tab] _load error: $e');
+    }
     if (mounted) {
       setState(() => _loading = false);
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
     }
+  }
+
+  Future<void> _markRead() async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    try {
+      await _api.post('/workspaces/$wsId/chat/mark-read', {});
+    } catch (_) {}
   }
 
   void _scrollToBottom() {
@@ -77,14 +113,27 @@ class _ChatTabState extends State<ChatTab> {
     }
   }
 
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+    final atBottom = _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 50;
+    if (atBottom) _markRead();
+  }
+
   Future<void> _send() async {
     final text = _controller.text.trim();
     if (text.isEmpty || _wsId == null) return;
     _controller.clear();
+    final needsApproval = _requestApproval;
+    if (_requestApproval) setState(() => _requestApproval = false);
     try {
-      await _api.post('/workspaces/$_wsId/chat', {'message': text});
+      final body = <String, dynamic>{'message': text};
+      if (needsApproval) body['requires_action'] = true;
+      await _api.post('/workspaces/$_wsId/chat', body);
       _load();
-    } catch (_) {}
+      _markRead();
+    } catch (e) {
+      debugPrint('[chat_tab] _send error: $e');
+    }
   }
 
   Future<void> _requireAction(int msgId) async {
@@ -92,7 +141,8 @@ class _ChatTabState extends State<ChatTab> {
     try {
       await _api.patch('/chat/$msgId/require-action', {});
       _load();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[chat_tab] _requireAction error: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل طلب الموافقة')));
     }
   }
@@ -139,10 +189,57 @@ class _ChatTabState extends State<ChatTab> {
     if (result == null || result.files.isEmpty || _wsId == null) return;
     final file = File(result.files.single.path!);
     try {
-      await _api.multipartPost('/workspaces/$_wsId/chat', {}, file: file, fileField: 'attachment');
+      await _api.multipartPost('/workspaces/$_wsId/chat', {}, file: file, fileField: 'file');
       _load();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('[chat_tab] _sendWithAttachment error: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل إرسال المرفق')));
+    }
+  }
+
+  Future<void> _openContracts() async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    try {
+      final data = await _api.get('/workspaces/$wsId/contracts');
+      if (!mounted) return;
+      final contracts = safeList(data['contracts']);
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        builder: (_) => _ContractsSheet(contracts: contracts),
+      );
+    } catch (e) {
+      debugPrint('[chat_tab] _openContracts error: $e');
+    }
+  }
+
+  Future<void> _openLatestZoomLink() async {
+    final wsId = _wsId;
+    if (wsId == null) return;
+    try {
+      final data = await _api.get('/workspaces/$wsId/meetings');
+      final meetings = safeList(data['meetings']);
+      String? zoomLink;
+      for (final m in meetings.reversed) {
+        final link = m['link'] as String?;
+        final status = m['status'] as String?;
+        if (link != null && status == 'scheduled') {
+          zoomLink = link;
+          break;
+        }
+      }
+      if (zoomLink == null) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('لا يوجد اجتماع نشط')));
+        return;
+      }
+      final uri = Uri.tryParse(zoomLink);
+      if (uri != null && await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      debugPrint('[chat_tab] _openLatestZoomLink error: $e');
     }
   }
 
@@ -170,117 +267,194 @@ class _ChatTabState extends State<ChatTab> {
   }
 
   Widget _textBubble(dynamic m, bool isClient, bool isPending) {
-    final sender = m['sender'] as Map<String, dynamic>?;
-    final senderAvatarUrl = sender?['avatar_url'] as String?;
-    final senderName = sender?['name'] as String? ?? '';
-
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isClient ? ShadColors.primary : ShadColors.card,
-        borderRadius: BorderRadius.only(
-          topLeft: const Radius.circular(12),
-          topRight: const Radius.circular(12),
-          bottomLeft: Radius.circular(isClient ? 3 : 12),
-          bottomRight: Radius.circular(isClient ? 12 : 3),
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.74),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: isClient ? ShadColors.primary : ShadColors.chatBg,
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: Radius.circular(isClient ? 12 : 3),
+            bottomRight: Radius.circular(isClient ? 3 : 12),
+          ),
+          border: isClient ? null : Border.all(color: const Color(0x1CFFFFFF), width: 0.5),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (sender != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 24, height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ShadColors.avatarBorder, width: 1.5),
-                    ),
-                    child: CircleAvatar(
-                      radius: 11.25,
-                      backgroundColor: ShadColors.cardBorder,
-                      backgroundImage: senderAvatarUrl != null
-                          ? NetworkImage(_api.resolveFileUrl(senderAvatarUrl))
-                          : null,
-                      child: senderAvatarUrl == null
-                          ? Text(senderName.isNotEmpty ? senderName[0].toUpperCase() : '?',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: ShadColors.gold))
-                          : null,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(senderName, style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary)),
-                ],
-              ),
-            ),
-          if (m['type'] == 'file' && m['file_url'] != null)
-            InkWell(
-              onTap: () async {
-                final url = _api.resolveFileUrl(m['file_url'] as String);
-                final uri = Uri.tryParse(url);
-                final messenger = ScaffoldMessenger.of(context);
-                if (uri != null && await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } else {
-                  messenger.showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                }
-              },
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (m['type'] == 'file' && m['file_url'] != null)
+              _buildFileAttachment(m),
+            Text(m['message'] ?? '', style: ShadTypography.chatBubble.copyWith(color: isClient ? ShadColors.textPrimary : ShadColors.textPrimary)),
+            if (!isClient && m['created_at'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.attach_file, size: 16),
-                    const SizedBox(width: 4),
-                    Flexible(child: Text('📎 ${AppLocalizations.of(context)!.attachment}', style: ShadTypography.chatBubble.copyWith(color: ShadColors.textPrimary), overflow: TextOverflow.ellipsis)),
+                    Text(_formatTime(m['created_at'] as String?),
+                      style: const TextStyle(fontSize: 9, color: ShadColors.textMuted)),
+                    if (m['id'] != null) ...[
+                      const SizedBox(width: 3),
+                      Text(m['read_at'] != null ? '✓✓' : '✓',
+                        style: const TextStyle(fontSize: 9, color: ShadColors.gold)),
+                    ],
                   ],
                 ),
               ),
-            ),
-          Text(m['message'] ?? '', style: ShadTypography.chatBubble.copyWith(color: isClient ? ShadColors.textPrimary : ShadColors.textPrimary)),
-          if (isPending)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text('🏷️ ${AppLocalizations.of(context)!.waitingClientApproval}', style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.warning)),
-            ),
-          if (m['action_taken'] == true)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                m['action_result'] == 'approved' ? '✅ ${AppLocalizations.of(context)!.approved}' : m['action_result'] == 'rejected' ? '❌ ${AppLocalizations.of(context)!.rejected}' : '✎ ${AppLocalizations.of(context)!.editRequested}',
-                style: ShadTypography.chatTimestamp.copyWith(
-                  color: m['action_result'] == 'approved' ? ShadColors.success : m['action_result'] == 'rejected' ? ShadColors.error : ShadColors.warning,
+            if (isClient && m['created_at'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 3),
+                child: Text(_formatTime(m['created_at'] as String?),
+                  style: const TextStyle(fontSize: 9, color: ShadColors.textMuted)),
+              ),
+            if (isPending)
+              Container(
+                margin: const EdgeInsets.only(top: 6),
+                decoration: BoxDecoration(
+                  color: ShadColors.chatBg,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: ShadColors.goldBorder, width: 0.5),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('موافقة جديدة', style: TextStyle(fontSize: 8.5, fontWeight: FontWeight.w700, color: ShadColors.gold, letterSpacing: 1.2)),
+                          const SizedBox(height: 4),
+                          Text(m['message'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay', height: 1.3)),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ShadColors.goldSoft,
+                        border: Border(top: BorderSide(color: ShadColors.goldBorder, width: 0.5)),
+                      ),
+                      child: const Text('انتظار موافقة العميل', style: TextStyle(fontSize: 10, color: ShadColors.gold)),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          if (m['approval']?['certificate']?['pdf_url'] != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: InkWell(
-                onTap: () async {
-                  final url = _api.resolveFileUrl(m['approval']['certificate']['pdf_url'] as String);
-                  final uri = Uri.tryParse(url);
-                  final messenger = ScaffoldMessenger.of(context);
-                  if (uri != null && await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } else {
-                    messenger.showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                  }
-                },
+            if (m['action_taken'] == true)
+              Container(
+                margin: const EdgeInsets.only(top: 6),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0x1497C459),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0x3397C459), width: 0.5),
+                ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.error),
-                  const SizedBox(width: 4),
-                  Text('📄 تحميل شهادة الموافقة', style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary, decoration: TextDecoration.underline)),
+                  Text(
+                    m['action_result'] == 'approved' ? '✓ تمت الموافقة' : m['action_result'] == 'rejected' ? '✗ تم الرفض' : '✎ طلب تعديل',
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: m['action_result'] == 'approved' ? ShadColors.success : m['action_result'] == 'rejected' ? ShadColors.error : ShadColors.warning),
+                  ),
                 ]),
               ),
+            if (m['approval']?['certificate']?['pdf_url'] != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: InkWell(
+                  onTap: () async {
+                    final url = _api.resolveFileUrl(m['approval']['certificate']['pdf_url'] as String);
+                    final uri = Uri.tryParse(url);
+                    final messenger = ScaffoldMessenger.of(context);
+                    if (uri != null && await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                      messenger.showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+                    }
+                  },
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.error),
+                    const SizedBox(width: 4),
+                    Text('📄 تحميل شهادة الموافقة', style: ShadTypography.chatTimestamp.copyWith(color: ShadColors.primary, decoration: TextDecoration.underline)),
+                  ]),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileAttachment(Map<String, dynamic> m) {
+    final fileName = m['file_name'] as String? ?? AppLocalizations.of(context)!.attachment;
+    final fileSize = m['file_size'] as int?;
+    String sizeText = '';
+    if (fileSize != null) {
+      if (fileSize > 1024 * 1024) {
+        sizeText = '${(fileSize / (1024 * 1024)).toStringAsFixed(1)} MB';
+      } else {
+        sizeText = '${(fileSize / 1024).toStringAsFixed(0)} KB';
+      }
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: ShadColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ShadColors.cardBorder, width: 0.5),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.insert_drive_file, size: 20, color: ShadColors.gold),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(fileName, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ShadColors.textPrimary), overflow: TextOverflow.ellipsis, maxLines: 1),
+                if (sizeText.isNotEmpty)
+                  Text(sizeText, style: const TextStyle(fontSize: 9, color: ShadColors.textSecondary)),
+              ],
             ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              final url = _api.resolveFileUrl(m['file_url'] as String);
+              final uri = Uri.tryParse(url);
+              if (uri != null && await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: const Icon(Icons.download, size: 16, color: ShadColors.gold),
+          ),
         ],
       ),
     );
+  }
+
+  String _formatTime(String? iso) {
+    if (iso == null) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final minute = dt.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
+    } catch (_) { return ''; }
+  }
+
+  bool _isOnline(Map<String, dynamic>? user) {
+    if (user == null) return false;
+    final lastSeen = user['last_seen_at'] as String?;
+    if (lastSeen == null) return false;
+    try {
+      final dt = DateTime.parse(lastSeen).toLocal();
+      return DateTime.now().difference(dt).inMinutes < 5;
+    } catch (_) {
+      return false;
+    }
   }
 
   @override
@@ -300,8 +474,12 @@ class _ChatTabState extends State<ChatTab> {
   @override
   Widget build(BuildContext context) {
     final isSA = _api.role == 'super_admin';
+    final clientName = _workspaceData?['client']?['contact_person'] as String? ?? 'العميل';
+    final clientAvatarUrl = _workspaceData?['client']?['avatar_url'] as String?;
+    final clientOnline = _isOnline(_workspaceData?['client']);
+    final wsActive = widget.wsStatus == 'active';
 
-    if (widget.wsStatus == null || widget.wsStatus != 'active') {
+    if (!wsActive) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(32),
@@ -320,6 +498,52 @@ class _ChatTabState extends State<ChatTab> {
     }
 
     return Column(children: [
+      // Chat Header
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: const BoxDecoration(
+          color: ShadColors.chatHeaderBg,
+          border: Border(bottom: BorderSide(color: ShadColors.cardBorder)),
+        ),
+        child: Row(children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: ShadColors.goldSoft,
+                backgroundImage: clientAvatarUrl != null ? NetworkImage(_api.resolveFileUrl(clientAvatarUrl)) : null,
+                child: clientAvatarUrl == null ? Text(_initials(clientName),
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold)) : null,
+              ),
+              Positioned(
+                bottom: 0, right: 0,
+                  child: Container(
+                    width: 9, height: 9,
+                    decoration: BoxDecoration(
+                      color: clientOnline ? ShadColors.online : ShadColors.textDisabled,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: ShadColors.chatHeaderBg, width: 1.5),
+                    ),
+                  ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(clientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+            const SizedBox(height: 1),
+            Text(clientOnline ? 'متصل الآن' : 'غير متصل',
+              style: TextStyle(fontSize: 10, color: clientOnline ? ShadColors.online : ShadColors.textDisabled)),
+          ])),
+          _headerIconBtn(Icons.copy_outlined, _openContracts),
+          const SizedBox(width: 6),
+          _headerIconBtn(Icons.videocam_outlined, _openLatestZoomLink),
+        ]),
+      ),
+      // Upcoming Meeting Banner
+      if (_nextMeeting != null) _buildUpcomingMeetingBanner(),
+      // Messages
       Expanded(
         child: _loading
           ? ListView.builder(
@@ -332,7 +556,7 @@ class _ChatTabState extends State<ChatTab> {
                   child: Container(
                     width: 200,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: ShadColors.card, borderRadius: BorderRadius.circular(12), border: Border.all(color: ShadColors.cardBorder)),
+                    decoration: BoxDecoration(color: ShadColors.chatBg, borderRadius: BorderRadius.circular(12), border: Border.all(color: ShadColors.cardBorder, width: 0.5)),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Container(height: 14, width: 140, decoration: BoxDecoration(color: ShadColors.cardBorder, borderRadius: BorderRadius.circular(6))),
                       const SizedBox(height: 8),
@@ -346,52 +570,32 @@ class _ChatTabState extends State<ChatTab> {
               ? Center(child: Text(AppLocalizations.of(context)!.noMessagesYet, style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)))
               : ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _messages.length,
-                  itemBuilder: (_, i) {
-                    final m = _messages[i];
-                    final isClient = m['sender_type'] == 'App\\Models\\Client';
-                    final isPending = m['requires_action'] == true && m['action_taken'] != true;
-                    final contract = m['contract'] as Map<String, dynamic>?;
-                    final hasContract = contract != null;
-
-                    final showActions = !isClient && _api.role != 'super_admin';
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: isClient ? MainAxisAlignment.end : MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          if (!isClient) const SizedBox(width: 40),
-                          Flexible(
-                            child: GestureDetector(
-                              onLongPress: showActions ? () => _showMessageActions(m) : null,
-                              child: hasContract
-                                ? _contractBubble(m, contract, isClient)
-                                : _textBubble(m, isClient, isPending),
-                            ),
-                          ),
-                          if (isClient) const SizedBox(width: 40),
-                        ],
-                      ),
-                    );
-                  },
+                  padding: const EdgeInsets.all(14),
+                  itemCount: _buildMessageList().length,
+                  itemBuilder: (_, i) => _buildMessageList()[i],
                 ),
       ),
+      // SA Read-Only Indicator
       if (isSA)
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: ShadColors.card, border: const Border(top: BorderSide(color: ShadColors.divider))),
+          decoration: const BoxDecoration(
+            color: ShadColors.chatHeaderBg,
+            border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
+          ),
           child: const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            Icon(Icons.visibility, size: 16, color: ShadColors.textSecondary),
+            Icon(Icons.visibility, size: 14, color: ShadColors.textSecondary),
             SizedBox(width: 8),
-            Text('عرض المحادثة فقط', style: TextStyle(fontSize: 12, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+            Text('عرض المحادثة فقط', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
           ]),
         ),
+      // Input Bar (AM only)
       if (!isSA)
         Container(
-          decoration: BoxDecoration(color: ShadColors.card, border: const Border(top: BorderSide(color: ShadColors.divider))),
+          decoration: const BoxDecoration(
+            color: ShadColors.chatHeaderBg,
+            border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
+          ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -399,45 +603,94 @@ class _ChatTabState extends State<ChatTab> {
                 width: double.infinity,
                 child: OutlinedButton.icon(
                   onPressed: () => ContractBuilder.show(context, onCreated: _load, isAdditional: true),
-                  icon: const Icon(Icons.description, size: 18),
+                  icon: const Icon(Icons.description, size: 16),
                   label: const Text('📄 إرسال عقد خدمة إضافية'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: ShadColors.primary,
-                    side: const BorderSide(color: ShadColors.primary),
+                    side: const BorderSide(color: ShadColors.primary, width: 0.5),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                   ),
                 ),
               ),
             ),
+            GestureDetector(
+              onTap: () => setState(() => _requestApproval = !_requestApproval),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                child: Row(children: [
+                  Icon(
+                    _requestApproval ? Icons.check_circle : Icons.circle_outlined,
+                    size: 16,
+                    color: _requestApproval ? ShadColors.gold : ShadColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'طلب موافقة العميل',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: _requestApproval ? FontWeight.w700 : FontWeight.w400,
+                      color: _requestApproval ? ShadColors.gold : ShadColors.textSecondary,
+                    ),
+                  ),
+                ]),
+              ),
+            ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: const EdgeInsets.fromLTRB(13, 0, 13, 9),
               child: Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.attach_file, size: 22),
-                  onPressed: _sendWithAttachment,
-                  color: ShadColors.textSecondary,
+                Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0x0AFFFFFF),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: ShadColors.cardBorder, width: 0.5),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.attach_file, size: 14),
+                    onPressed: _sendWithAttachment,
+                    color: ShadColors.textSecondary,
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 7),
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary),
                     decoration: InputDecoration(
                       hintText: AppLocalizations.of(context)!.typeMessage,
+                      hintStyle: const TextStyle(fontSize: 12, color: ShadColors.textDim),
                       filled: true,
-                      fillColor: ShadColors.inputFill,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                      fillColor: ShadColors.chatInputFill,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: Color(0x12FFFFFF), width: 1),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: Color(0x12FFFFFF), width: 1),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: const BorderSide(color: ShadColors.gold, width: 1),
+                      ),
                     ),
                     onSubmitted: (_) => _send(),
                   ),
                 ),
-                const SizedBox(width: 8),
-                CircleAvatar(
-                  backgroundColor: ShadColors.primary,
+                const SizedBox(width: 7),
+                Container(
+                  width: 32, height: 32,
+                  decoration: const BoxDecoration(
+                    color: ShadColors.crimson,
+                    shape: BoxShape.circle,
+                  ),
                   child: IconButton(
-                    icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.send_rounded, color: Colors.white, size: 14),
                     onPressed: _send,
+                    padding: EdgeInsets.zero,
                   ),
                 ),
               ]),
@@ -445,6 +698,246 @@ class _ChatTabState extends State<ChatTab> {
           ]),
         ),
     ]);
+  }
+
+  Widget _headerIconBtn(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28, height: 28,
+        decoration: BoxDecoration(
+          color: const Color(0x0AFFFFFF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: ShadColors.cardBorder, width: 0.5),
+        ),
+        child: Icon(icon, size: 14, color: ShadColors.textSecondary),
+      ),
+    );
+  }
+
+  Widget _buildUpcomingMeetingBanner() {
+    final m = _nextMeeting!;
+    final title = m['title'] as String? ?? 'اجتماع قادم';
+    final link = m['link'] as String?;
+    String timeLabel = '';
+    try {
+      final scheduledAt = DateTime.parse(m['scheduled_at']).toLocal();
+      final diff = scheduledAt.difference(DateTime.now());
+      if (diff.inMinutes < 60) {
+        timeLabel = 'بعد ${diff.inMinutes} دقيقة';
+      } else if (diff.inHours < 24) {
+        timeLabel = 'بعد ${diff.inHours} ساعة';
+      } else {
+        timeLabel = 'بعد ${diff.inDays} يوم';
+      }
+    } catch (_) {}
+    return GestureDetector(
+      onTap: link != null ? () => launchUrl(Uri.parse(link), mode: LaunchMode.externalApplication) : null,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0x1485B7EB),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: ShadColors.meetingBlueBorder, width: 0.5),
+        ),
+        child: Row(children: [
+          const Icon(Icons.videocam, size: 18, color: ShadColors.meetingBlue),
+          const SizedBox(width: 8),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ShadColors.meetingBlue)),
+            if (timeLabel.isNotEmpty) Text(timeLabel, style: TextStyle(fontSize: 10, color: ShadColors.meetingBlue.withAlpha(180))),
+          ])),
+          if (link != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: ShadColors.meetingBlue,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text('انضم', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+            ),
+        ]),
+      ),
+    );
+  }
+
+  String _initials(String? name) {
+    if (name == null || name.isEmpty) return '?';
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.length >= 2) {
+      return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+    }
+    return name[0].toUpperCase();
+  }
+
+  List<Widget> _buildMessageList() {
+    final widgets = <Widget>[];
+    String? lastDate;
+
+    for (int i = 0; i < _messages.length; i++) {
+      final m = _messages[i];
+      final createdAt = m['created_at'] as String?;
+      final dateKey = _dateKey(createdAt);
+
+      if (dateKey != null && dateKey != lastDate) {
+        widgets.add(_dateSeparator(dateKey, createdAt));
+        lastDate = dateKey;
+      }
+
+      final isClient = m['sender_type'] == 'App\\Models\\Client';
+      final isPending = m['requires_action'] == true && m['action_taken'] != true;
+      final contract = m['contract'] as Map<String, dynamic>?;
+      final hasContract = contract != null;
+      final type = m['type'] as String?;
+      final metadata = m['metadata'] as Map<String, dynamic>?;
+      final showActions = !isClient && _api.role != 'super_admin';
+
+      Widget bubble;
+      if (type == 'meeting' && metadata != null) {
+        bubble = _buildMeetingBubble(metadata, m);
+      } else if (hasContract) {
+        bubble = _contractBubble(m, contract, isClient);
+      } else {
+        bubble = _textBubble(m, isClient, isPending);
+      }
+
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 9),
+          child: Row(
+            mainAxisAlignment: isClient ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isClient) const SizedBox(width: 40),
+              Flexible(
+                child: GestureDetector(
+                  onLongPress: showActions ? () => _showMessageActions(m) : null,
+                  child: bubble,
+                ),
+              ),
+              if (isClient) const SizedBox(width: 40),
+            ],
+          ),
+        ),
+      );
+    }
+    return widgets;
+  }
+
+  Widget _buildMeetingBubble(Map<String, dynamic> metadata, Map<String, dynamic> m) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        MeetingChip(metadata: metadata),
+        if (m['created_at'] != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 3, left: 2),
+            child: Text(_formatTime(m['created_at'] as String?),
+              style: const TextStyle(fontSize: 9, color: ShadColors.textDisabled)),
+          ),
+      ],
+    );
+  }
+
+  String? _dateKey(String? iso) {
+    if (iso == null) return null;
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      return '${dt.year}-${dt.month}-${dt.day}';
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Widget _dateSeparator(String dateKey, String? iso) {
+    String label;
+    if (iso == null) {
+      label = '';
+    } else {
+      try {
+        final dt = DateTime.parse(iso).toLocal();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final msgDate = DateTime(dt.year, dt.month, dt.day);
+        final diff = today.difference(msgDate).inDays;
+        if (diff == 0) {
+          label = 'Today';
+        } else if (diff == 1) {
+          label = 'Yesterday';
+        } else {
+          label = '${dt.day} ${_monthName(dt.month)} ${dt.year}';
+        }
+      } catch (_) {
+        label = '';
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(children: [
+        const Expanded(child: Divider(color: Color(0x1CFFFFFF), thickness: 0.5, height: 1)),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(label, style: const TextStyle(fontSize: 9, color: ShadColors.textMuted)),
+        ),
+        const Expanded(child: Divider(color: Color(0x1CFFFFFF), thickness: 0.5, height: 1)),
+      ]),
+    );
+  }
+
+  String _monthName(int month) {
+    const names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return month >= 1 && month <= 12 ? names[month] : '';
+  }
+}
+
+class _ContractsSheet extends StatelessWidget {
+  final List<dynamic> contracts;
+  const _ContractsSheet({required this.contracts});
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.5,
+      maxChildSize: 0.8,
+      minChildSize: 0.3,
+      expand: false,
+      builder: (_, scrollController) => Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [
+            const Text('العقود', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: ShadColors.textPrimary)),
+            const Spacer(),
+            IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+          ]),
+          const Divider(),
+          Expanded(
+            child: contracts.isEmpty
+                ? const Center(child: Text('لا توجد عقود', style: TextStyle(color: ShadColors.textSecondary)))
+                : ListView.separated(
+                    controller: scrollController,
+                    itemCount: contracts.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (_, i) {
+                      final c = contracts[i];
+                      final status = c['status'] as String? ?? '';
+                      final statusColor = statusColors[status] ?? ShadColors.textDisabled;
+                      final statusLabel = statusLabels[status] ?? status;
+                      return ListTile(
+                        leading: const Icon(Icons.description, size: 24, color: ShadColors.gold),
+                        title: Text(c['title'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: statusColor.withAlpha(25), borderRadius: BorderRadius.circular(8)),
+                          child: Text(statusLabel, style: TextStyle(fontSize: 10, color: statusColor)),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ]),
+      ),
+    );
   }
 }
 

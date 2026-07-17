@@ -16,6 +16,7 @@ class RespondApprovalRequest extends FormRequest
     {
         return [
             'action' => 'required|in:approved,edit_requested',
+            'reason' => 'nullable|string|max:1000',
         ];
     }
 }

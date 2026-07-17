@@ -75,6 +75,16 @@ class _PaymentsPageState extends State<PaymentsPage> {
     return index < labels.length ? 'دفعة ${labels[index]}' : 'دفعة ${index + 1}';
   }
 
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> _load() async {
     final wsId = _api.workspaceId;
     if (wsId == null) return;
@@ -183,7 +193,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 ]),
               )
             else
-              ..._filteredPayments.asMap().entries.map((entry) => _paymentCard(entry.value, entry.key)),
+              ..._filteredPayments.asMap().entries.map((entry) => _paymentCard(entry.value, _filteredPayments.length - 1 - entry.key, _filteredPayments.length)),
           ],
         ),
       ),
@@ -460,7 +470,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (ctx.mounted) setSheetState(() {});
   }
 
-  Widget _paymentCard(dynamic p, int index) {
+  Widget _paymentCard(dynamic p, int index, [int? total]) {
     final isPending = p['status'] == 'pending';
     final isApproved = p['status'] == 'approved';
     final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : ShadColors.textDisabled;
@@ -482,7 +492,12 @@ class _PaymentsPageState extends State<PaymentsPage> {
           child: Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_installmentLabel(index), style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600, fontFamily: 'NotoSansArabic')),
+                Text(
+                  _formatDate(p['created_at'] as String?).isNotEmpty
+                      ? '${_installmentLabel(index)}  •  ${_formatDate(p['created_at'] as String?)}'
+                      : _installmentLabel(index),
+                  style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600, fontFamily: 'NotoSansArabic'),
+                ),
                 const SizedBox(height: 4),
                 Text('${p['amount'] ?? 0} ${_currency(p)}', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
                 const SizedBox(height: 4),

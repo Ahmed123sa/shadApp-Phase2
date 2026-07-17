@@ -175,12 +175,32 @@ class _ContractsPageState extends State<ContractsPage> {
             if (c['contract_type'] == 'additional')
               Container(
                 margin: const EdgeInsets.only(left: 6),
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: ShadColors.gold.withAlpha(25),
-                  borderRadius: BorderRadius.circular(4),
+                  gradient: LinearGradient(colors: [ShadColors.gold.withAlpha(50), ShadColors.gold.withAlpha(25)]),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: ShadColors.gold.withAlpha(80)),
                 ),
-                child: const Text('إضافة', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: ShadColors.gold)),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.add_circle_outline, size: 10, color: ShadColors.gold),
+                  SizedBox(width: 3),
+                  Text('عقد إضافي', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: ShadColors.gold)),
+                ]),
+              ),
+            if (c['contract_type'] != 'additional')
+              Container(
+                margin: const EdgeInsets.only(left: 6),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2A4A6A).withAlpha(60),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: const Color(0xFF4A8AC0).withAlpha(80)),
+                ),
+                child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.description_outlined, size: 10, color: Color(0xFF4A8AC0)),
+                  SizedBox(width: 3),
+                  Text('عقد أساسي', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFF4A8AC0))),
+                ]),
               ),
             StatusBadge(status: status),
           ]),
@@ -191,6 +211,18 @@ class _ContractsPageState extends State<ContractsPage> {
           if (c['start_date'] != null) ...[
             const SizedBox(height: 4),
             Text((c['start_date'] as String).split('T')[0], style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+          ],
+          if (status == 'edit_requested' && c['edit_reason'] != null && (c['edit_reason'] as String).isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: ShadColors.gold.withAlpha(20),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text('سبب التعديل: ${c['edit_reason']}', style: const TextStyle(fontSize: 10, color: ShadColors.gold), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
           ],
           if (needsAction) ...[
             const SizedBox(height: 10),
@@ -421,8 +453,37 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                 Text(c['title'] ?? '', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
                 if (c['contract_type'] == 'additional')
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: Text('عقد خدمة إضافية', style: TextStyle(fontSize: 12, color: ShadColors.gold.withAlpha(180))),
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(colors: [ShadColors.gold.withAlpha(50), ShadColors.gold.withAlpha(25)]),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: ShadColors.gold.withAlpha(80)),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.add_circle_outline, size: 12, color: ShadColors.gold),
+                        SizedBox(width: 4),
+                        Text('عقد خدمة إضافية', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: ShadColors.gold)),
+                      ]),
+                    ),
+                  ),
+                if (c['contract_type'] != 'additional')
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2A4A6A).withAlpha(60),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFF4A8AC0).withAlpha(80)),
+                      ),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.description_outlined, size: 12, color: Color(0xFF4A8AC0)),
+                        SizedBox(width: 4),
+                        Text('عقد أساسي', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF4A8AC0))),
+                      ]),
+                    ),
                   ),
                 const SizedBox(height: 4),
                 Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
@@ -439,7 +500,7 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Row(children: List.generate(6, (i) {
+                Row(children: List.generate(5, (i) {
                   final done = i < stageIndex;
                   final current = i == stageIndex;
                   return Expanded(
@@ -696,16 +757,35 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: ShadColors.cardBorder),
                 ),
-                child: Center(
-                  child: Text(
-                    status == 'client_approved' ? 'تمت موافقتك على هذا العقد' :
-                    status == 'edit_requested' ? 'قمت بطلب تعديل العقد' :
-                    status == 'rejected' ? 'قمت برفض هذا العقد' :
-                    status == 'completed' ? 'العقد مكتمل' : '',
-                    style: const TextStyle(fontSize: 13, color: ShadColors.textSecondary),
-                    textAlign: TextAlign.center,
+                child: Column(children: [
+                  Center(
+                    child: Text(
+                      status == 'client_approved' ? 'تمت موافقتك على هذا العقد' :
+                      status == 'edit_requested' ? 'قمت بطلب تعديل العقد' :
+                      status == 'rejected' ? 'قمت برفض هذا العقد' :
+                      status == 'completed' ? 'العقد مكتمل' : '',
+                      style: const TextStyle(fontSize: 13, color: ShadColors.textSecondary),
+                      textAlign: TextAlign.center,
+                    ),
                   ),
-                ),
+                  if (status == 'edit_requested' && c['edit_reason'] != null && (c['edit_reason'] as String).isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: ShadColors.gold.withAlpha(20),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: ShadColors.gold.withAlpha(40)),
+                      ),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        const Text('سبب التعديل:', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ShadColors.gold)),
+                        const SizedBox(height: 4),
+                        Text(c['edit_reason'] as String, style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary)),
+                      ]),
+                    ),
+                  ],
+                ]),
               ),
               const SizedBox(height: 16),
             ],
@@ -722,8 +802,8 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
       'onboarding': 0, 'draft': 0, 'sent': 0,
       'client_approved': 1, 'edit_requested': 1,
       'company_approved': 2,
-      'payment_approved': 3, 'payment_pending': 3,
-      'completed': 5,
+      'completed': 3,
+      'archived': 4,
     };
     return stageMap[c['status'] as String? ?? ''] ?? 0;
   }

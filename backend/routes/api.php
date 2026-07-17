@@ -14,6 +14,7 @@ use App\Models\FileEntry;
 use App\Domains\Audit\AuditController;
 use App\Domains\Notification\NotificationController;
 use App\Domains\SubUser\SubUserController;
+use App\Domains\Dashboard\DashboardController;
 use Illuminate\Support\Facades\Route;
 // Public auth routes
 Route::post('/auth/register', [AuthController::class, 'registerSuperAdmin'])->middleware('throttle:5,1');
@@ -36,6 +37,9 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
 
     // Client show, signature + profile (client or manager)
     Route::get('/clients/{client}', [ClientController::class, 'show']);
+
+    // Badge counts — accessible by all authenticated users
+    Route::get('/badge-counts', [DashboardController::class, 'badgeCounts']);
     Route::post('/clients/{client}/sign', [ClientController::class, 'sign']);
     Route::delete('/clients/{client}/sign', [ClientController::class, 'deleteSign']);
     Route::match(['put', 'post'], '/clients/{client}/profile', [ClientController::class, 'profileUpdate']);
@@ -116,6 +120,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Meetings
     Route::post('/workspaces/{workspace}/meetings', [MeetingController::class, 'store']);
+    Route::put('/workspaces/{workspace}/meetings/{meeting}', [MeetingController::class, 'update']);
+    Route::delete('/workspaces/{workspace}/meetings/{meeting}', [MeetingController::class, 'destroy']);
 
     // Files — review + definitions (admin only)
     Route::post('/files/{file}/review', [FileController::class, 'review']);

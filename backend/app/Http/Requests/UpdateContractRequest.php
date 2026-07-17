@@ -25,6 +25,7 @@ class UpdateContractRequest extends FormRequest
             'clauses.*.type' => 'in:fixed,optional,custom',
             'required_documents' => 'nullable|array',
             'required_documents.*.name' => 'required|string|max:255',
+            'contract_type' => 'nullable|string|in:main,additional',
         ];
     }
 }

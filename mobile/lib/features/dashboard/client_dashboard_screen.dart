@@ -30,6 +30,10 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
   final _api = ApiClient();
   int _unreadNotifs = 0;
   int _unreadChat = 0;
+  int _badgeContracts = 0;
+  int _badgePayments = 0;
+  int _badgeApprovals = 0;
+  int _badgeFiles = 0;
   final ValueNotifier<int> _contractRefreshNotifier = ValueNotifier<int>(0);
 
   Map<String, dynamic>? _client;
@@ -199,6 +203,13 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       final messages = safeList(data['messages']);
       _unreadChat = messages.where((m) => m['sender_type'] != 'App\\Models\\Client' && m['read_at'] == null).length;
     } catch (_) {}
+    try {
+      final data = await _api.get('/badge-counts');
+      _badgeContracts = int.tryParse(data['contracts']?.toString() ?? '') ?? 0;
+      _badgePayments = int.tryParse(data['payments']?.toString() ?? '') ?? 0;
+      _badgeApprovals = int.tryParse(data['approvals']?.toString() ?? '') ?? 0;
+      _badgeFiles = int.tryParse(data['files']?.toString() ?? '') ?? 0;
+    } catch (_) {}
     if (mounted) setState(() {});
   }
 
@@ -253,7 +264,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
       ContractsPage(onGoToPayments: _goToPayments, refreshNotifier: _contractRefreshNotifier),
       const PaymentsPage(),
       ChatPage(onGoToPayments: _goToPayments),
-      const ApprovalsPage(),
+      ApprovalsPage(workspaceId: _workspace?['id'] as int?),
       const ClientFilesPage(),
     ];
 
@@ -390,6 +401,15 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
 
   Widget _navIcon(IconData icon, int index, {bool selected = false, bool isChat = false}) {
     final isUnlocked = !_isTabLocked(index);
+    int badgeCount = 0;
+    switch (index) {
+      case 0: badgeCount = _badgeContracts; break;
+      case 1: badgeCount = _badgePayments; break;
+      case 2: badgeCount = _unreadChat; break;
+      case 3: badgeCount = _badgeApprovals; break;
+      case 4: badgeCount = _badgeFiles; break;
+    }
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -403,18 +423,19 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
               borderRadius: BorderRadius.vertical(bottom: Radius.circular(1)),
             ),
           ),
-        Stack(children: [
+        Stack(clipBehavior: Clip.none, children: [
           Icon(icon, size: 22,
-            color: isChat && isUnlocked && _selectedIndex == 2
-              ? ShadColors.gold
-              : null),
-          if (isChat && _unreadChat > 0 && isUnlocked)
+            color: selected ? ShadColors.gold : null),
+          if (badgeCount > 0 && isUnlocked)
             Positioned(
               right: -6, top: -4,
               child: Container(
                 padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(color: ShadColors.gold, shape: BoxShape.circle),
-                child: Text('$_unreadChat', style: const TextStyle(fontSize: 7, color: Colors.black, fontWeight: FontWeight.bold)),
+                child: Text(
+                  badgeCount > 99 ? '99+' : '$badgeCount',
+                  style: const TextStyle(fontSize: 7, color: Colors.black, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
         ]),

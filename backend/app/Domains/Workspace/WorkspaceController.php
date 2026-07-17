@@ -2,6 +2,7 @@
 
 namespace App\Domains\Workspace;
 
+use App\Models\Meeting;
 use App\Models\Workspace;
 use App\Models\AuditLog;
 use Illuminate\Http\JsonResponse;
@@ -37,11 +38,17 @@ class WorkspaceController extends Controller
         $this->authorize('view', $workspace);
 
         $workspace->load([
-            'client', 'contracts.clauses', 'contracts.requiredDocuments', 'payments', 'approvals.certificate',
+            'client', 'manager', 'contracts.clauses', 'contracts.requiredDocuments', 'payments', 'approvals.certificate',
             'meetings', 'files', 'chatMessages.sender',
         ]);
 
-        return response()->json(['workspace' => $workspace]);
+        $nextMeeting = Meeting::where('workspace_id', $workspace->id)
+            ->where('status', 'scheduled')
+            ->where('scheduled_at', '>', now())
+            ->orderBy('scheduled_at')
+            ->first();
+
+        return response()->json(['workspace' => $workspace, 'nextMeeting' => $nextMeeting]);
     }
 
     public function activate(Request $request, Workspace $workspace): JsonResponse

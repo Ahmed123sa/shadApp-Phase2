@@ -71,7 +71,7 @@ class _ContractsTabState extends State<ContractsTab> {
   }
 
   Future<void> _editContract(Map<String, dynamic> c) async {
-    await ContractBuilder.show(context, contractId: c['id'], contractData: c, onCreated: _load);
+            await ContractBuilder.show(context, contractId: c['id'], contractData: c, isAdditional: c['contract_type'] == 'additional', onCreated: _load);
   }
 
   Future<void> _deleteContract(int id) async {

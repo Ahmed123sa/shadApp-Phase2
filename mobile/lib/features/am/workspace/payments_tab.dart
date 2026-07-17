@@ -76,6 +76,16 @@ class _PaymentsTabState extends State<PaymentsTab> {
     return index < labels.length ? 'دفعة ${labels[index]}' : 'دفعة ${index + 1}';
   }
 
+  String _formatDate(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(dateStr);
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> _review(int id) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -178,7 +188,12 @@ class _PaymentsTabState extends State<PaymentsTab> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(_installmentLabel(i - 1), style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600)),
+                    Text(
+                      _formatDate(p['created_at'] as String?).isNotEmpty
+                          ? '${_installmentLabel(_payments.length - i)}  •  ${_formatDate(p['created_at'] as String?)}'
+                          : _installmentLabel(_payments.length - i),
+                      style: TextStyle(fontSize: 11, color: ShadColors.gold, fontWeight: FontWeight.w600),
+                    ),
                     const SizedBox(height: 4),
                     Text('${p['amount'] ?? 0} ${p['currency'] as String? ?? 'SAR'}', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
                     const SizedBox(height: 4),

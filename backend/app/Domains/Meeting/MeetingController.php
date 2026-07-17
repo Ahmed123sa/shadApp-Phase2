@@ -81,6 +81,32 @@ class MeetingController extends Controller
         return response()->json(['meeting' => $meeting], 201);
     }
 
+    public function update(Request $request, Meeting $meeting): JsonResponse
+    {
+        $this->authorize('update', $meeting);
+
+        $meeting->update($request->only(['title', 'scheduled_at', 'duration_minutes', 'notes', 'status']));
+
+        AuditLog::create([
+            'auditable_type' => Meeting::class,
+            'auditable_id' => $meeting->id,
+            'user_id' => $request->user()->id,
+            'action' => 'meeting.updated',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['meeting' => $meeting->fresh()]);
+    }
+
+    public function destroy(Meeting $meeting): JsonResponse
+    {
+        $this->authorize('delete', $meeting);
+
+        $meeting->delete();
+
+        return response()->json(['message' => 'تم حذف الاجتماع']);
+    }
+
     protected function createZoomMeeting(string $title, string $scheduledAt, int $duration): array
     {
         $accountId = config('services.zoom.account_id');

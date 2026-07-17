@@ -6,6 +6,7 @@ import '../../core/api_client.dart';
 import '../../core/theme.dart';
 import '../../core/widgets/loading_state.dart';
 import '../../core/widgets/empty_state.dart';
+import '../../core/widgets/status_badge.dart';
 
 class ClientFilesPage extends StatefulWidget {
   const ClientFilesPage({super.key});
@@ -18,6 +19,7 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
   final _api = ApiClient();
   List<dynamic> _files = [];
   List<dynamic> _definitions = [];
+  List<dynamic> _paymentFiles = [];
   bool _loading = true;
   bool _uploading = false;
 
@@ -35,6 +37,7 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
       final data = await _api.get('/workspaces/$wsId/files');
       _files = safeList(data['files']);
       _definitions = safeList(data['definitions']);
+      _paymentFiles = safeList(data['paymentFiles']);
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -143,19 +146,21 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
           ),
         ]),
         const SizedBox(height: 8),
-        if (_files.isEmpty)
+        if (_files.isEmpty && _paymentFiles.isEmpty)
           const EmptyState(icon: Icons.folder_outlined, title: 'لا توجد ملفات')
         else
           ..._files.map((f) {
             final status = f['status'] as String? ?? 'pending';
-            final statusColor = status == 'approved'
-                ? ShadColors.success
-                : status == 'rejected'
-                    ? ShadColors.error
-                    : ShadColors.warning;
-            return Card(
-              margin: const EdgeInsets.only(bottom: 8),
-              child: ListTile(
+            final tag = f['tag'] as String? ?? '';
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: ShadColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
+              ),
+              child: GestureDetector(
                 onTap: f['file_url'] != null ? () async {
                   final url = _api.resolveFileUrl(f['file_url'] as String);
                   final uri = Uri.tryParse(url);
@@ -166,39 +171,134 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
                   }
                 } : null,
-                leading: Container(
-                  width: 34, height: 34,
-                  decoration: BoxDecoration(
-                    color: ShadColors.gold.withAlpha(38),
-                    borderRadius: BorderRadius.circular(8),
+                child: Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: ShadColors.gold.withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.attach_file, size: 20, color: ShadColors.gold),
                   ),
-                  child: const Icon(Icons.attach_file, size: 18, color: ShadColors.gold),
-                ),
-                title: Text(f['name'] ?? '', style: ShadTypography.cardTitle, overflow: TextOverflow.ellipsis),
-                subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  if (f['definition_name'] != null)
-                    Text(f['definition_name'], style: ShadTypography.caption.copyWith(color: ShadColors.primary)),
-                  if (f['size'] != null)
-                    Text('${(f['size'] / 1024).toStringAsFixed(0)} KB',
-                        style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
-                  if (f['rejection_reason'] != null)
-                    Text('سبب الرفض: ${f['rejection_reason']}',
-                        style: ShadTypography.caption.copyWith(color: ShadColors.error)),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(f['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textPrimary), overflow: TextOverflow.ellipsis),
+                      ),
+                      if (tag.isNotEmpty)
+                        Container(
+                          margin: const EdgeInsets.only(left: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ShadColors.crimson.withAlpha(40),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: ShadColors.crimson.withAlpha(70)),
+                          ),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.label, size: 11, color: ShadColors.crimson),
+                            const SizedBox(width: 4),
+                            Text(tag, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ShadColors.crimson)),
+                          ]),
+                        ),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      StatusBadge(status: status, fontSize: 10),
+                      const SizedBox(width: 8),
+                      if (f['definition_name'] != null)
+                        Text(f['definition_name'], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ShadColors.primary)),
+                      if (f['definition_name'] != null && f['size'] != null)
+                        const Text('  •  ', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+                      if (f['size'] != null)
+                        Text('${(f['size'] / 1024).toStringAsFixed(0)} KB',
+                            style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'PlayfairDisplay')),
+                    ]),
+                    if (f['rejection_reason'] != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text('سبب الرفض: ${f['rejection_reason']}', style: const TextStyle(fontSize: 11, color: ShadColors.error)),
+                      ),
+                  ])),
                 ]),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: statusColor.withAlpha(25),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    statusLabels[status] ?? status,
-                    style: ShadTypography.caption.copyWith(color: statusColor),
-                  ),
-                ),
               ),
             );
           }),
+        if (_paymentFiles.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          Text('إثباتات الدفع', style: ShadTypography.sectionHeader),
+          const SizedBox(height: 10),
+          ..._paymentFiles.map((pf) {
+            final status = pf['status'] as String? ?? 'pending';
+            final date = pf['created_at'] as String?;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 10),
+              padding: const EdgeInsets.all(13),
+              decoration: BoxDecoration(
+                color: ShadColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
+              ),
+              child: GestureDetector(
+                onTap: pf['file_url'] != null ? () async {
+                  final url = _api.resolveFileUrl(pf['file_url'] as String);
+                  final uri = Uri.tryParse(url);
+                  if (uri != null && await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
+                  }
+                } : null,
+                child: Row(children: [
+                  Container(
+                    width: 38, height: 38,
+                    decoration: BoxDecoration(
+                      color: ShadColors.success.withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.receipt_long, size: 20, color: ShadColors.success),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Row(children: [
+                      Expanded(
+                        child: Text(pf['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textPrimary), overflow: TextOverflow.ellipsis),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ShadColors.success.withAlpha(40),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ShadColors.success.withAlpha(70)),
+                        ),
+                        child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                          Icon(Icons.receipt_long, size: 11, color: ShadColors.success),
+                          SizedBox(width: 4),
+                          Text('إثبات الدفع', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: ShadColors.success)),
+                        ]),
+                      ),
+                    ]),
+                    const SizedBox(height: 6),
+                    Row(children: [
+                      StatusBadge(status: status, fontSize: 10),
+                      if (date != null) ...[
+                        const SizedBox(width: 8),
+                        Text(date.split('T')[0], style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                      ],
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${pf['amount'] ?? ''} ${pf['currency'] ?? 'SAR'}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay'),
+                    ),
+                  ])),
+                ]),
+              ),
+            );
+          }),
+        ],
       ],
     );
   }

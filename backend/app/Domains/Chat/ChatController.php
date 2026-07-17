@@ -35,8 +35,9 @@ class ChatController extends Controller
     {
         $request->validate([
             'message' => 'nullable|string',
-            'type' => 'in:text,file',
+            'type' => 'in:text,file,meeting',
             'file' => 'nullable|file|max:102400',
+            'metadata' => 'nullable|array',
             'requires_action' => 'boolean',
         ]);
 
@@ -70,8 +71,22 @@ class ChatController extends Controller
             'message' => $request->message,
             'type' => $request->hasFile('file') ? 'file' : ($request->type ?? 'text'),
             'file_url' => $fileUrl,
+            'metadata' => $request->metadata,
             'requires_action' => $request->requires_action ?? false,
         ]);
+
+        if ($request->boolean('requires_action')) {
+            $approval = $workspace->approvals()->create([
+                'title' => 'موافقة مطلوبة: ' . Str::limit($request->message ?? 'رسالة', 50),
+                'description' => $request->message,
+                'approvable_type' => 'chat_message',
+                'approvable_id' => $message->id,
+                'reference_no' => 'APP-' . strtoupper(Str::random(10)),
+                'requested_by' => $sender->id,
+                'status' => 'pending',
+            ]);
+            $message->update(['approval_id' => $approval->id]);
+        }
 
         // If a file was uploaded, also save as FileEntry
         if ($request->hasFile('file')) {
@@ -139,6 +154,7 @@ class ChatController extends Controller
     {
         $request->validate([
             'action' => 'required|in:approved,edit_requested',
+            'reason' => 'nullable|string|max:1000',
         ]);
 
         $user = $request->user();
@@ -158,6 +174,7 @@ class ChatController extends Controller
                 'client_action' => $request->action,
                 'signature' => $signature,
                 'responded_at' => now(),
+                'reason' => $request->input('reason'),
             ]);
 
             if ($request->action === 'approved') {

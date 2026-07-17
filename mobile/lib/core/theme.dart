@@ -44,6 +44,25 @@ class ShadColors {
   static const Color cardGoldBorder = Color(0xFFD4AF37);
   static const Color online = Color(0xFF22C55E);
 
+  // Chat-specific colors
+  static const Color chatBg = Color(0xFF181818);
+  static const Color chatBorder = Color(0xFF1C1C1C);
+  static const Color chatHeaderBg = Color(0xFF0D0D0D);
+  static const Color chatInputFill = Color(0xFF141414);
+  static const Color chatInputBorder = Color(0xFF1A1A1A);
+  static const Color meetingBlue = Color(0xFF85B7EB);
+  static const Color meetingBlueBg = Color(0xFF1A2530);
+  static const Color meetingBlueBorder = Color(0xFF2A4050);
+
+  // Gold variants for approval cards
+  static const Color goldSoft = Color(0x23D4AF37);
+  static const Color goldBorder = Color(0x4DD4AF37);
+
+  // Text variants for chat
+  static const Color textMuted = Color(0xFF555555);
+  static const Color textDim = Color(0xFF9A9A96);
+  static const Color crimsonSoft = Color(0x2E941414);
+
   // Legacy aliases for backward compatibility
   static const Color primary = Color(0xFF941414);
   static const Color primaryLight = Color(0xFFB71C1C);
@@ -108,8 +127,8 @@ class ShadTypography {
   static const TextStyle inputText = TextStyle(fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.37);
   static const TextStyle emptyTitle = TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0, height: 1.44);
   static const TextStyle emptyBody = TextStyle(fontSize: 14, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.43);
-  static const TextStyle chatBubble = TextStyle(fontSize: 15, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.47);
-  static const TextStyle chatTimestamp = TextStyle(fontSize: 11, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.27);
+  static const TextStyle chatBubble = TextStyle(fontSize: 12.5, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.6);
+  static const TextStyle chatTimestamp = TextStyle(fontSize: 9, fontWeight: FontWeight.w400, letterSpacing: 0, height: 1.27);
 }
 
 ThemeData shadTheme() {

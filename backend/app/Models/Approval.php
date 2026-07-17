@@ -15,7 +15,7 @@ class Approval extends Model
     protected $fillable = [
         'workspace_id', 'approvable_type', 'approvable_id', 'title', 'description',
         'status', 'client_action', 'signature', 'reference_no', 'requested_by',
-        'responded_at',
+        'responded_at', 'reason',
     ];
 
     protected function casts(): array

@@ -12,7 +12,7 @@ class Contract extends Model
     use HasFactory;
 
     protected $fillable = [
-        'workspace_id', 'title', 'contract_type', 'status', 'value', 'currency', 'start_date', 'end_date',
+        'workspace_id', 'title', 'contract_type', 'status', 'edit_reason', 'value', 'currency', 'start_date', 'end_date',
         'pdf_url', 'client_signed_at', 'company_signed_at', 'company_signature_data', 'company_signature_type',
         'archived_at', 'created_by',
     ];

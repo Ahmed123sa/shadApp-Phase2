@@ -16,13 +16,14 @@ const resolveFileUrl = (url: string) => {
 export default function FilesTab({ wsId }: { wsId: number }) {
   const isSA = getUser()?.role === 'super_admin';
   const [files, setFiles] = useState<any[]>([]);
+  const [paymentFiles, setPaymentFiles] = useState<any[]>([]);
   const [definitions, setDefinitions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDefForm, setShowDefForm] = useState(false);
   const [defName, setDefName] = useState('');
   const [uploadDef, setUploadDef] = useState('');
 
-  const load = () => api.get(`/workspaces/${wsId}/files`).then(({ data }) => { setFiles(data.files || []); setDefinitions(data.definitions || []); }).catch(() => {}).finally(() => setLoading(false));
+  const load = () => api.get(`/workspaces/${wsId}/files`).then(({ data }) => { setFiles(data.files || []); setPaymentFiles(data.paymentFiles || []); setDefinitions(data.definitions || []); }).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, [wsId]);
 
   const upload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -73,12 +74,17 @@ export default function FilesTab({ wsId }: { wsId: number }) {
         </div>
       )}
 
-      {files.length === 0 ? <EmptyState message="لا توجد ملفات" /> : null}
+      {files.length === 0 && paymentFiles.length === 0 ? <EmptyState message="لا توجد ملفات" /> : null}
       <div className="space-y-2">
         {files.map((f) => (
           <div key={f.id} className="border border-[var(--color-card-border)] rounded-lg p-3 text-sm flex items-center justify-between">
             <div>
-              <p className="font-medium">{f.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="font-medium">{f.name}</p>
+                {f.tag && (
+                  <span className="px-2 py-0.5 bg-red-900/20 text-red-400 rounded text-[10px] font-bold">{f.tag}</span>
+                )}
+              </div>
               <p className="text-xs text-[var(--color-text-disabled)]">
                 {f.document_definition?.name ? `${f.document_definition.name} • ` : ''}
                 {f.size ? `${(f.size / 1024).toFixed(0)} KB` : ''}
@@ -103,6 +109,33 @@ export default function FilesTab({ wsId }: { wsId: number }) {
           </div>
         ))}
       </div>
+
+      {paymentFiles.length > 0 && (
+        <>
+          <h4 className="text-sm font-bold text-[var(--color-gold)] mt-4">إثباتات الدفع</h4>
+          <div className="space-y-2">
+            {paymentFiles.map((pf) => (
+              <div key={pf.id} className="border border-[var(--color-card-border)] rounded-lg p-3 text-sm flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{pf.name}</p>
+                    <span className="px-2 py-0.5 bg-green-900/20 text-green-400 rounded text-[10px] font-bold">إثبات الدفع</span>
+                  </div>
+                  <p className="text-xs text-[var(--color-text-disabled)]">{pf.amount} {pf.currency}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${pf.status === 'approved' || pf.status === 'verified' ? 'bg-green-900/30 text-green-400' : pf.status === 'rejected' ? 'bg-red-900/30 text-red-400' : 'bg-yellow-900/30 text-yellow-400'}`}>
+                    {pf.status === 'approved' || pf.status === 'verified' ? 'مقبول' : pf.status === 'rejected' ? 'مرفوض' : 'قيد المراجعة'}
+                  </span>
+                  {pf.file_url && (
+                    <a href={resolveFileUrl(pf.file_url)} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-500 hover:underline">عرض</a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

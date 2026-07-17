@@ -27,8 +27,7 @@ class _MeetingsPageState extends State<MeetingsPage> {
   }
 
   Future<void> _load() async {
-    final wsId = _api.workspaceId;
-    if (wsId == null) return;
+    final wsId = _api.workspaceIdSafe;
     setState(() { _loading = true; _error = null; });
     try {
       final data = await _api.get('/workspaces/$wsId/meetings');
