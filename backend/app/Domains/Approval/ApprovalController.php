@@ -21,6 +21,22 @@ use App\Services\ApprovalPdfService;
 
 class ApprovalController extends Controller
 {
+    public function pending(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $workspaceIds = $user->role === 'super_admin'
+            ? Workspace::pluck('id')
+            : $user->workspaces()->pluck('id');
+
+        $approvals = Approval::whereIn('workspace_id', $workspaceIds)
+            ->where('status', 'pending')
+            ->with(['workspace.client', 'requester'])
+            ->latest()
+            ->get();
+
+        return response()->json(['approvals' => $approvals]);
+    }
+
     public function index(Request $request, Workspace $workspace): JsonResponse
     {
         $this->authorize('viewAny', Approval::class);

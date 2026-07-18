@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Archivo:wght@400;500;600;700&family=Noto+Sans+Arabic:wght@300;400;500;600;700&family=Tajawal:wght@400;500;700&display=swap');
 @import "tailwindcss";
 
 @theme inline {
@@ -22,12 +22,47 @@
   --color-error: #EF4444;
   --color-info: #3B82F6;
   --color-purple: #8B5CF6;
+
+  --color-card-bg: #181818;
+  --color-crimson-soft: rgba(148, 20, 20, 0.18);
+  --color-crimson-border: rgba(148, 20, 20, 0.35);
+  --color-gold-soft: rgba(212, 175, 55, 0.14);
+  --color-gold-border: rgba(212, 175, 55, 0.3);
+  --color-green: #97C459;
+  --color-blue: #85B7EB;
+  --color-red-accent: #E24B4A;
 }
 
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-family: 'Noto Sans Arabic', 'Archivo', system-ui, sans-serif;
+  font-family: 'Tajawal', 'Noto Sans Arabic', 'Archivo', system-ui, sans-serif;
   margin: 0;
-  direction: rtl;
+}
+
+.nav-item-active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 15%;
+  height: 70%;
+  width: 2.5px;
+  background: var(--color-gold);
+  border-radius: 2px;
+}
+
+.stat-card-hover {
+  transition: transform 0.2s, border-color 0.2s;
+}
+.stat-card-hover:hover {
+  transform: translateY(-3px);
+  border-color: var(--color-gold-border);
+}
+
+.row-slide {
+  animation: sl .3s ease backwards;
+}
+@keyframes sl {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
 }

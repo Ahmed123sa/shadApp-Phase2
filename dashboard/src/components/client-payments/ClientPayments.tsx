@@ -232,7 +232,9 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
           const statusDot = isApproved ? 'bg-green-400' : isPending ? 'bg-[var(--color-gold)]' : 'bg-gray-500';
           const statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p.status;
 
-          const proofUrl = p.proof_file_url ? `${(process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000')}/storage/${p.proof_file_url.replace(/^\/?storage\//, '')}` : null;
+          const FILE_BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
+          const proofRaw = Array.isArray(p.proof_file_url) ? (p.proof_file_url[0] || null) : (p.proof_file_url || null);
+          const proofUrl = proofRaw ? `${FILE_BASE_URL}/storage/${proofRaw.replace(/^\/?storage\//, '')}` : null;
 
           return (
           <div key={p.id} className={`border rounded-xl overflow-hidden ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>

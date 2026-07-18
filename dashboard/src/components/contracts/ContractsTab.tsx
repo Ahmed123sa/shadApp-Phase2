@@ -173,7 +173,16 @@ export default function ContractsTab({ wsId }: { wsId: number }) {
               {c.value ? <p className="text-xs text-[var(--color-text-secondary)]">{c.value} ر.س{c.start_date ? ` • من ${c.start_date}` : ''}{c.end_date ? ` إلى ${c.end_date}` : ''}</p> : ''}
               {c.required_documents?.length > 0 && <p className="text-xs text-amber-600 mt-0.5">📎 {c.required_documents.length} مستند مطلوب</p>}
             </div>
-            <StatusBadge status={c.status} />
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded-full text-[9px] font-semibold ${
+                c.contract_type === 'main' || c.contract_type === null
+                  ? 'bg-[var(--color-gold-soft)] text-[var(--color-gold)] border border-[var(--color-gold-border)]'
+                  : 'bg-blue-900/30 text-blue-400'
+              }`}>
+                {c.contract_type === 'main' || c.contract_type === null ? 'أساسي' : 'إضافي'}
+              </span>
+              <StatusBadge status={c.status} />
+            </div>
           </div>
           <ContractStatusStepper status={c.status} compact />
           {c.clauses?.length > 0 && (

@@ -88,3 +88,69 @@
 | 1 | AM dashboard redesign — bottom nav (4 tabs AM, 5 tabs SA), stats grid, pending approvals, clients preview | `am_dashboard_page.dart` |
 | 2 | Client management design improvements: Home card (remove delete, improve avatar/badge/chips), Clients card (long press → bottom sheet actions), Create form (remove contract_value/notes, add date_of_birth, improve AppBar/button), Detail page (remove notes, add date_of_birth, improve colors) | `am_dashboard_page.dart`, `sa_clients_page.dart`, `create_client_page.dart`, `client_detail_page.dart` |
 | 3 | Backend: `date_of_birth` column for clients | Migration `2026_07_17_000002_add_date_of_birth_to_clients.php`, `Client.php`, `ClientController.php`, `StoreClientRequest.php`, `UpdateClientRequest.php` |
+
+## Fixes Applied (2026-07-17 — Web Dashboard Redesign)
+
+| # | Issue | Files Changed |
+|---|-------|-------------|
+| 1 | Web dashboard redesign — AM + SA views matching HTML design (sidebar, topbar, stat cards, two-column layout, activity feed, managers table) | `layout.tsx`, `page.tsx`, `globals.css` |
+| 2 | New components: DashboardStatCard, ActivityFeed, ManagerTableRow | `components/dashboard/DashboardStatCard.tsx`, `components/dashboard/ActivityFeed.tsx`, `components/dashboard/ManagerTableRow.tsx` |
+| 3 | Backend: `GET /approvals/pending` endpoint for SA dashboard | `ApprovalController.php`, `routes/api.php` |
+| 4 | CSS: Tajawal font, new design tokens (crimson-soft, gold-soft, etc.), removed hardcoded RTL | `globals.css` |
+| 5 | Translations: Added 30+ new keys for dashboard redesign | `messages/ar.json`, `messages/en.json` |
+| 6 | Fixed PaymentsTab.tsx missing return in load() function | `components/payments/PaymentsTab.tsx` |
+| 7 | Dashboard fixes: ws-wrap wrapper, pending approvals card (SA), nav active logic, AM nav items (messages/meetings/payments/files/contracts) with workspace links | `layout.tsx`, `page.tsx` |
+
+## Fixes Applied (2026-07-17 — AM Dashboard Fixes)
+
+| # | Issue | Files Changed |
+|---|-------|-------------|
+| 1 | Sidebar: "لوحة التحكم" → "الرئيسية" | `messages/ar.json`, `messages/en.json` |
+| 2 | Sidebar: removed messages from AM nav, reorganized groups | `layout.tsx` |
+| 3 | Sidebar + Topbar: avatar image from `avatar_url` (falls back to initials) | `layout.tsx` |
+| 4 | Client card: removed "عقد #X", show `contact_person` instead, removed contract value column, added avatar image | `page.tsx` |
+| 5 | Meetings view: fetches from `GET /all-meetings` with full details (title, client, scheduled_at, duration, status icon) + pagination | `page.tsx` |
+| 6 | Payments view: fetches from `GET /payments/pending` with client name, amount, method, date/time + pagination | `page.tsx` |
+| 7 | Files view: fetches from `GET /all-files` with client, filename, type, size, date + pagination | `page.tsx` |
+| 8 | Backend: `GET /all-files` cross-workspace endpoint (AM scoped to their workspaces) | `FileController.php`, `routes/api.php` |
+| 9 | Pagination controls in all list views (meetings, payments, files, contracts) | `page.tsx` |
+
+## Cross-Workspace API Endpoints (Backend)
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/all-meetings` | GET | AM + SA | Paginated meetings across workspaces (AM scoped) |
+| `/payments/pending` | GET | AM + SA | Paginated pending payments across workspaces (AM scoped) |
+| `/all-files` | GET | AM + SA | Paginated file entries across workspaces (AM scoped) |
+| `/all-payments` | GET | AM + SA | Paginated all payments across workspaces (AM scoped) |
+| `/all-contracts` | GET | AM + SA | Paginated contracts across workspaces |
+| `/approvals/pending` | GET | SA only | Pending approvals across all workspaces |
+
+## Fixes Applied (2026-07-17 — 3 Bug Fixes)
+
+| # | Issue | Files Changed |
+|---|-------|-------------|
+| 1 | Contracts don't show basic/additional type — added `contract_type` to types + column in dashboard contracts table + badge in ContractsTab | `types/index.ts`, `page.tsx`, `ContractsTab.tsx` |
+| 2 | Files view "no data" — `FileEntryPolicy` was missing (403 on every request) | `FileEntryPolicy.php` (new), `AuthServiceProvider.php` |
+| 3 | `url.startsWith is not a function` crash — `proof_file_url` is array but frontend treated as string | `PaymentsTab.tsx`, `ClientPayments.tsx`, `types/index.ts` |
+
+## Backend Policies
+
+| Model | Policy | Registered |
+|-------|--------|-----------|
+| Workspace | WorkspacePolicy | ✅ |
+| Client | ClientPolicy | ✅ |
+| Contract | ContractPolicy | ✅ |
+| Payment | PaymentPolicy | ✅ |
+| FileEntry | FileEntryPolicy | ✅ (added) |
+| Approval | ApprovalPolicy | ✅ |
+| Meeting | MeetingPolicy | ✅ |
+| SubUser | SubUserPolicy | ✅ |
+
+## Fixes Applied (2026-07-17 — Seed Data + Payments Endpoint)
+
+| # | Issue | Files Changed |
+|---|-------|-------------|
+| 1 | Seed data: added 3 files, 3 meetings, 2 extra payments (approved + pending) | `DatabaseSeeder.php` |
+| 2 | New `GET /all-payments` endpoint — shows ALL payments (not just pending) | `PaymentController.php`, `routes/api.php` |
+| 3 | AM sidebar: added Settings group | `layout.tsx` |

@@ -91,9 +91,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/workspaces', [WorkspaceController::class, 'store']);
     Route::post('/workspaces/{workspace}/activate', [WorkspaceController::class, 'activate']);
 
-    // All contracts/meetings (SuperAdmin)
+    // All contracts/meetings/payments/files (cross-workspace)
     Route::get('/all-contracts', [ContractController::class, 'allContracts']);
     Route::get('/all-meetings', [MeetingController::class, 'allMeetings']);
+    Route::get('/all-payments', [PaymentController::class, 'allPayments']);
+    Route::get('/all-files', [FileController::class, 'allFiles']);
 
     // Contracts
     Route::post('/workspaces/{workspace}/contracts', [ContractController::class, 'store']);
@@ -114,6 +116,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/payments/pending', [PaymentController::class, 'pending']);
 
     // Approvals
+    Route::get('/approvals/pending', [ApprovalController::class, 'pending']);
     Route::post('/workspaces/{workspace}/approvals', [ApprovalController::class, 'store']);
     Route::get('/approvals/{approval}', [ApprovalController::class, 'show']);
     Route::post('/approvals/{approval}/respond', [ApprovalController::class, 'respond']);

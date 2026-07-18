@@ -8,10 +8,12 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
 const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
-function resolveFileUrl(url: string): string {
+function resolveFileUrl(url: string | string[]): string {
   if (!url) return '';
-  if (url.startsWith('http')) return url;
-  return `${FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
+  const raw = Array.isArray(url) ? (url[0] || '') : url;
+  if (!raw) return '';
+  if (raw.startsWith('http')) return raw;
+  return `${FILE_BASE}/storage/${raw.replace(/^\/?storage\//, '')}`;
 }
 
 export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId: number; client: Client; onWorkspaceUpdate?: (ws: any) => void }) {
@@ -23,7 +25,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
 
   useEffect(() => {
     const load = () => {
-      Promise.all([
+      return Promise.all([
         api.get(`/workspaces/${wsId}/payments`),
         api.get(`/workspaces/${wsId}/contracts`),
       ]).then(([payRes, contRes]) => {

@@ -27,6 +27,7 @@ export interface Contract {
   workspace_id: number;
   title: string;
   status: ContractStatus;
+  contract_type?: string;
   value: string | null;
   start_date?: string;
   end_date?: string;
@@ -58,7 +59,7 @@ export interface Payment {
   client_id: number;
   amount: string | number;
   method_type: string;
-  proof_file_url?: string;
+  proof_file_url?: string | string[];
   status: 'pending' | 'approved';
   notes?: string;
   reviewed_by?: number;

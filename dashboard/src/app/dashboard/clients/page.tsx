@@ -11,11 +11,13 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', send_email: true });
+  const [form, setForm] = useState({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', date_of_birth: '', send_email: true });
   const [newCreds, setNewCreds] = useState<any>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ company_name: '', contact_person: '', phone: '', notes: '' });
+  const [editForm, setEditForm] = useState({ company_name: '', contact_person: '', phone: '', notes: '', date_of_birth: '' });
   const [createError, setCreateError] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
 
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -34,10 +36,19 @@ export default function ClientsPage() {
     setCreateError('');
     try {
       const { data } = await api.post('/clients', form);
+      if (data.client?.id && avatarFile) {
+        try {
+          const fd = new FormData();
+          fd.append('avatar', avatarFile);
+          await api.post(`/clients/${data.client.id}/profile`, fd);
+        } catch (_) {}
+      }
       setClients((prev) => [data.client, ...prev]);
       setNewCreds(data.credentials);
       setShowCreate(false);
-      setForm({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', send_email: true });
+      setForm({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', date_of_birth: '', send_email: true });
+      setAvatarFile(null);
+      setAvatarPreview('');
     } catch (err: any) {
       setCreateError(err?.response?.data?.message || 'فشل إنشاء العميل');
     }
@@ -45,7 +56,7 @@ export default function ClientsPage() {
 
   const startEdit = (c: any) => {
     setEditingId(c.id);
-    setEditForm({ company_name: c.company_name, contact_person: c.contact_person, phone: c.phone || '', notes: c.notes || '' });
+    setEditForm({ company_name: c.company_name, contact_person: c.contact_person, phone: c.phone || '', notes: c.notes || '', date_of_birth: c.date_of_birth || '' });
   };
 
   const saveEdit = async (id: number) => {
@@ -83,12 +94,26 @@ export default function ClientsPage() {
       {showCreate && (
         <form onSubmit={createClient} className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-6 mb-6 space-y-4">
           {createError && <div className="bg-red-900/30 text-red-400 text-sm p-3 rounded-lg">{createError}</div>}
+          <div className="flex items-center gap-4 mb-2">
+            <div className="w-20 h-20 rounded-full bg-[var(--color-card-border)] border-2 border-dashed border-[var(--color-card-border)] flex items-center justify-center overflow-hidden shrink-0">
+              {avatarPreview ? (
+                <img src={avatarPreview} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl text-[var(--color-text-muted)]">👤</span>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">صورة العميل (اختياري)</label>
+              <input type="file" accept="image/*" className="text-sm text-[var(--color-text-secondary)] file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-[var(--color-card-border)] file:text-[var(--color-foreground)] hover:file:bg-[var(--color-input-fill)]" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setAvatarFile(f); setAvatarPreview(URL.createObjectURL(f)); } }} />
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="اسم الشركة" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} required />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="الشخص المسؤول" value={form.contact_person} onChange={(e) => setForm({ ...form, contact_person: e.target.value })} required />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" type="email" placeholder="البريد الإلكتروني" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required dir="ltr" />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="رقم الهاتف" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
             <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            <input className="border border-[var(--color-card-border)] rounded-lg px-4 py-2 text-sm" type="date" placeholder="تاريخ الميلاد" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
             <PasswordField value={form.password} onChange={(v) => setForm({ ...form, password: v })} label="كلمة المرور (اختياري)" placeholder="اتركه فارغاً للإنشاء التلقائي" showStrength={false} showRequirements={false} opt />
           </div>
           <label className="flex items-center gap-2 text-sm text-[var(--color-foreground)] cursor-pointer">
@@ -123,6 +148,7 @@ export default function ClientsPage() {
                       <input value={editForm.contact_person} onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-32" />
                       <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-28" />
                       <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-40" placeholder="ملاحظات" />
+                      <input type="date" value={editForm.date_of_birth} onChange={(e) => setEditForm({ ...editForm, date_of_birth: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-36" />
                       <button onClick={() => saveEdit(client.id)} className="bg-[var(--color-primary)] text-white px-3 py-1 rounded text-xs font-medium hover:bg-[var(--color-primary-dark)]">حفظ</button>
                       <button onClick={() => setEditingId(null)} className="bg-[var(--color-input-fill)] px-3 py-1 rounded text-xs hover:bg-[var(--color-card-border)]">إلغاء</button>
                     </div>

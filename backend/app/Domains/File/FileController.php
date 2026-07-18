@@ -15,6 +15,19 @@ use Illuminate\Support\Facades\Storage;
 
 class FileController extends Controller
 {
+    public function allFiles(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', FileEntry::class);
+
+        $user = $request->user();
+        $files = FileEntry::with('workspace.client', 'uploadedBy')
+            ->when($user->isAccountManager(), fn($q) => $q->whereHas('workspace', fn($q) => $q->where('manager_id', $user->id)))
+            ->latest()
+            ->paginate(30);
+
+        return response()->json(['files' => $files]);
+    }
+
     public function index(Workspace $workspace): JsonResponse
     {
         $files = $workspace->files()->with('documentDefinition', 'reviewer')->latest()->get();

@@ -24,6 +24,23 @@ class PaymentController extends Controller
     const BUSINESS_METHODS = ['bank_transfer', 'swift', 'corporate_account'];
     const INDIVIDUAL_METHODS = ['instapay', 'vodafone_cash', 'mobile_wallet'];
 
+    public function allPayments(Request $request): JsonResponse
+    {
+        $this->authorize('viewAny', Payment::class);
+
+        $user = $request->user();
+        $query = Payment::with(['workspace.client', 'contract']);
+
+        if ($user->isAccountManager()) {
+            $clientIds = $user->managedClients()->pluck('id');
+            $query->whereIn('client_id', $clientIds);
+        }
+
+        return response()->json([
+            'payments' => $query->latest()->paginate($request->input('per_page', 30)),
+        ]);
+    }
+
     public function pending(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Payment::class);
