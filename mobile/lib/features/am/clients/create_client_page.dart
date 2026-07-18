@@ -1,8 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
-import '../../../core/widgets/shad_logo.dart';
 import '../../../core/widgets/password_field.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
  
@@ -23,12 +24,13 @@ class _CreateClientPageState extends State<CreateClientPage> {
   final _countryController = TextEditingController();
   final _industryController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _valueController = TextEditingController();
-  final _notesController = TextEditingController();
+  final _dateOfBirthController = TextEditingController();
+  DateTime? _dateOfBirth;
   bool _isBusiness = true;
   bool _autoPassword = true;
   bool _saving = false;
   String? _errorMsg;
+  File? _avatarFile;
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
@@ -43,13 +45,18 @@ class _CreateClientPageState extends State<CreateClientPage> {
         'phone': _phoneController.text.trim(),
         'country': _countryController.text.trim(),
         'industry': _industryController.text.trim(),
-        if (_valueController.text.trim().isNotEmpty) 'contract_value': double.tryParse(_valueController.text),
         'client_type': _isBusiness ? 'business' : 'individual',
-        'notes': _notesController.text.trim(),
+        if (_dateOfBirth != null) 'date_of_birth': _dateOfBirth!.toIso8601String(),
         if (!_autoPassword) 'password': _passwordController.text.trim(),
         'send_email': true,
       });
       final creds = (res['credentials'] is Map) ? res['credentials'] as Map<String, dynamic> : null;
+      final clientId = res['client']?['id'] as int?;
+      if (clientId != null && _avatarFile != null) {
+        try {
+          await _api.multipartPost('/clients/$clientId/profile', {}, file: _avatarFile!, fileField: 'avatar');
+        } catch (_) {}
+      }
       if (mounted) {
         try {
           await showDialog(
@@ -78,6 +85,12 @@ class _CreateClientPageState extends State<CreateClientPage> {
     if (mounted) setState(() => _saving = false);
   }
 
+  Future<void> _pickAvatar() async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
+    setState(() => _avatarFile = File(result.files.single.path!));
+  }
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -87,8 +100,7 @@ class _CreateClientPageState extends State<CreateClientPage> {
     _countryController.dispose();
     _industryController.dispose();
     _passwordController.dispose();
-    _valueController.dispose();
-    _notesController.dispose();
+    _dateOfBirthController.dispose();
     super.dispose();
   }
 
@@ -96,15 +108,16 @@ class _CreateClientPageState extends State<CreateClientPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-  title: Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const ShadLogo(size: 24, showText: false),
-      const SizedBox(width: 8),
-      Text(AppLocalizations.of(context)!.createClientTitle),
-    ],
-  ),
-),
+        centerTitle: true,
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.person_add, size: 22, color: ShadColors.gold),
+            SizedBox(width: 8),
+            Text('إضافة عميل جديد', style: TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.gold)),
+          ],
+        ),
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -121,6 +134,26 @@ class _CreateClientPageState extends State<CreateClientPage> {
                 ),
                 child: Text(_errorMsg!, style: const TextStyle(color: ShadColors.error, fontSize: 12)),
               ),
+            Center(
+              child: GestureDetector(
+                onTap: _pickAvatar,
+                child: CircleAvatar(
+                  radius: 40,
+                  backgroundColor: ShadColors.crimson,
+                  backgroundImage: _avatarFile != null ? FileImage(_avatarFile!) : null,
+                  child: _avatarFile == null ? const Icon(Icons.person_add, size: 40, color: ShadColors.gold) : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Center(
+              child: TextButton.icon(
+                onPressed: _pickAvatar,
+                icon: const Icon(Icons.camera_alt, size: 16, color: ShadColors.gold),
+                label: const Text('إضافة صورة', style: TextStyle(color: ShadColors.gold)),
+              ),
+            ),
+            const SizedBox(height: 16),
             TextFormField(
               controller: _nameController,
               decoration: InputDecoration(labelText: AppLocalizations.of(context)!.companyName, hintText: AppLocalizations.of(context)!.companyNameHint),
@@ -185,11 +218,31 @@ class _CreateClientPageState extends State<CreateClientPage> {
               decoration: InputDecoration(labelText: AppLocalizations.of(context)!.industry, hintText: AppLocalizations.of(context)!.industryHint),
             ),
             const SizedBox(height: 14),
-            TextFormField(
-              controller: _valueController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.contractValue, prefixText: '${AppLocalizations.of(context)!.contracts} '),
-              keyboardType: TextInputType.number,
-              // optional field
+            InkWell(
+              onTap: () async {
+                final d = await showDatePicker(
+                  context: context,
+                  initialDate: _dateOfBirth ?? DateTime(2000),
+                  firstDate: DateTime(1950),
+                  lastDate: DateTime.now(),
+                );
+                if (d != null) setState(() {
+                  _dateOfBirth = d;
+                  _dateOfBirthController.text = '${d.year}/${d.month}/${d.day}';
+                });
+              },
+              borderRadius: BorderRadius.circular(10),
+              child: InputDecorator(
+                decoration: const InputDecoration(labelText: 'تاريخ الميلاد'),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(_dateOfBirthController.text.isNotEmpty ? _dateOfBirthController.text : 'اختر التاريخ',
+                        style: TextStyle(fontSize: 14, color: _dateOfBirthController.text.isNotEmpty ? ShadColors.textPrimary : ShadColors.textDisabled)),
+                    const Icon(Icons.calendar_today, size: 18, color: ShadColors.gold),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 14),
             Text(AppLocalizations.of(context)!.clientType, style: ShadTypography.inputLabel),
@@ -202,21 +255,20 @@ class _CreateClientPageState extends State<CreateClientPage> {
               selected: {_isBusiness},
               onSelectionChanged: (s) => setState(() => _isBusiness = s.first),
             ),
-            const SizedBox(height: 14),
-            TextFormField(
-              controller: _notesController,
-              decoration: InputDecoration(labelText: AppLocalizations.of(context)!.notes, hintText: AppLocalizations.of(context)!.notesHint),
-              maxLines: 3,
-            ),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _saving ? null : _submit,
+                style: ElevatedButton.styleFrom(backgroundColor: ShadColors.crimson),
                 child: _saving
                     ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                    : Text(AppLocalizations.of(context)!.createClient),
+                    : Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Icon(Icons.person_add, size: 18, color: Colors.white),
+                        const SizedBox(width: 8),
+                        Text(AppLocalizations.of(context)!.createClient),
+                      ]),
               ),
             ),
           ],

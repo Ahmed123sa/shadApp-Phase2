@@ -16,6 +16,7 @@ class ApiClient {
   int get workspaceIdSafe => workspaceId ?? 1;
   String? role;
   String? userName;
+  String? avatarUrl;
 
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -31,6 +32,7 @@ class ApiClient {
     userId = prefs.getInt('user_id');
     workspaceId = prefs.getInt('workspace_id');
     userName = prefs.getString('user_name');
+    avatarUrl = prefs.getString('avatar_url');
   }
 
   Future<void> setToken(String token) async {
@@ -50,6 +52,7 @@ class ApiClient {
     workspaceId = null;
     role = null;
     userName = null;
+    avatarUrl = null;
     await _secureStorage.delete(key: 'token');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('role');
@@ -71,14 +74,16 @@ class ApiClient {
     return role;
   }
 
-  Future<void> setUserData({int? id, String? name, int? workspace}) async {
+  Future<void> setUserData({int? id, String? name, int? workspace, String? avatar}) async {
     if (id != null) userId = id;
     if (name != null) userName = name;
     if (workspace != null) workspaceId = workspace;
+    if (avatar != null) avatarUrl = avatar;
     final prefs = await SharedPreferences.getInstance();
     if (id != null) await prefs.setInt('user_id', id);
     if (name != null) await prefs.setString('user_name', name);
     if (workspace != null) await prefs.setInt('workspace_id', workspace);
+    if (avatar != null) await prefs.setString('avatar_url', avatar);
   }
 
   Future<void> registerFcmToken(String token, String deviceType) async {

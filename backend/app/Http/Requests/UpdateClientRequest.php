@@ -22,6 +22,7 @@ class UpdateClientRequest extends FormRequest
             'country' => 'nullable|string|max:100',
             'industry' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
+            'date_of_birth' => 'nullable|date',
             'status' => 'in:active,inactive,blocked',
         ];
     }

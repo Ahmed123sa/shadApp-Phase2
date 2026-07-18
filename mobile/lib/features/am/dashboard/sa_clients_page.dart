@@ -118,7 +118,12 @@ class _SaClientsPageState extends State<SaClientsPage> {
     final initials = name.isNotEmpty ? name.substring(0, name.length.clamp(0, 2)).toUpperCase() : '?';
 
     return GestureDetector(
-      onTap: () => _openClient(client),
+      onTap: () {
+        final wsId = client['workspace']?['id'] as int?;
+        if (wsId != null) {
+          context.push('/am/workspace/$wsId');
+        }
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         decoration: BoxDecoration(
@@ -132,7 +137,12 @@ class _SaClientsPageState extends State<SaClientsPage> {
             CircleAvatar(
               radius: 18,
               backgroundColor: ShadColors.crimson,
-              child: Text(initials, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo')),
+              backgroundImage: (client['avatar_url'] as String?)?.isNotEmpty == true
+                  ? NetworkImage(_api.resolveFileUrl(client['avatar_url']))
+                  : null,
+              child: (client['avatar_url'] as String?)?.isNotEmpty != true
+                  ? Text(initials, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'Archivo'))
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -153,28 +163,66 @@ class _SaClientsPageState extends State<SaClientsPage> {
                 style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: wsActive ? ShadColors.success : signedAt == null ? ShadColors.gold : ShadColors.sent, fontFamily: 'Archivo'),
               ),
             ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: () => _showClientActions(client),
+              child: const Icon(Icons.more_vert, size: 16, color: ShadColors.textDisabled),
+            ),
           ]),
         ),
       ),
     );
   }
 
-  void _openClient(Map<String, dynamic> client) async {
-    final ws = client['workspace'] as Map<String, dynamic>?;
-    if (ws == null) {
-      try {
-        final created = await _api.post('/workspaces', {'client_id': client['id']});
-        final newWs = created['workspace'] as Map<String, dynamic>;
-        await _api.setUserData(id: client['id'], name: client['company_name'], workspace: newWs['id']);
-        if (!mounted) return;
-        context.push('/am/workspace/${newWs['id']}');
-      } catch (_) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل إنشاء مساحة العمل')));
-      }
-      return;
+  void _showClientActions(Map<String, dynamic> client) {
+    final clientId = int.tryParse(client['id']?.toString() ?? '') ?? 0;
+    final name = client['company_name'] as String? ?? '';
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay', color: ShadColors.textPrimary)),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            leading: const Icon(Icons.edit, color: ShadColors.gold),
+            title: const Text('تعديل العميل'),
+            onTap: () { Navigator.pop(ctx); context.push<bool>('/am/clients/${client['id']}').then((v) { if (v == true) _load(); }); },
+          ),
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: ShadColors.error),
+            title: const Text('حذف العميل', style: TextStyle(color: ShadColors.error)),
+            onTap: () { Navigator.pop(ctx); _deleteClient(clientId, name); },
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _deleteClient(int id, String name) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف العميل'),
+        content: Text('حذف "$name" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error),
+            child: const Text('حذف', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.delete('/clients/$id');
+      _load();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل حذف العميل')));
     }
-    await _api.setUserData(id: client['id'], name: client['company_name'], workspace: ws['id']);
-    if (!mounted) return;
-    context.push('/am/workspace/${ws['id']}');
   }
 }

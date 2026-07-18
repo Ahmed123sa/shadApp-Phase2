@@ -48,6 +48,7 @@ class ClientController extends Controller
             'industry' => $request->industry,
             'client_type' => $request->client_type ?? 'business',
             'notes' => $request->notes,
+            'date_of_birth' => $request->date_of_birth,
         ]);
 
         Workspace::create([
@@ -87,7 +88,7 @@ class ClientController extends Controller
     public function update(UpdateClientRequest $request, Client $client): JsonResponse
     {
 
-        $fillableFields = ['company_name', 'contact_person', 'phone', 'country', 'industry', 'notes', 'status'];
+        $fillableFields = ['company_name', 'contact_person', 'phone', 'country', 'industry', 'notes', 'status', 'date_of_birth'];
         if ($request->filled('password')) {
             $fillableFields[] = 'password';
         }
@@ -129,15 +130,17 @@ class ClientController extends Controller
     {
         $request->validate([
             'contact_person' => 'sometimes|string|max:255',
-            'avatar' => 'nullable|image|max:2048',
+            'avatar' => 'nullable|image|max:8192',
         ]);
+
+        $updateData = $request->only(['contact_person']);
 
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
-            $client->avatar_url = \Illuminate\Support\Facades\Storage::url($path);
+            $updateData['avatar_url'] = \Illuminate\Support\Facades\Storage::url($path);
         }
 
-        $client->update($request->only(['contact_person']));
+        $client->update($updateData);
 
         return response()->json(['client' => $client->fresh()]);
     }

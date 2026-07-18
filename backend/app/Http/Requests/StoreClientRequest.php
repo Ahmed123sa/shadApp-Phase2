@@ -25,6 +25,7 @@ class StoreClientRequest extends FormRequest
             'industry' => 'nullable|string|max:100',
             'client_type' => 'nullable|string|in:business,individual',
             'notes' => 'nullable|string',
+            'date_of_birth' => 'nullable|date',
             'send_email' => 'boolean',
         ];
     }

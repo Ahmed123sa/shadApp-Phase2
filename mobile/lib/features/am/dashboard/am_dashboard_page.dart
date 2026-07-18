@@ -153,42 +153,13 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     }
   }
 
-  Future<void> _deleteClient(int id, String name) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('حذف العميل'),
-        content: Text('حذف "$name" نهائياً؟ لا يمكن التراجع عن هذا الإجراء.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error),
-            child: const Text('حذف', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
-    try {
-      await _api.delete('/clients/$id');
-      _load();
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل حذف العميل')));
-    }
-  }
-
   void _openClient(Map<String, dynamic> client) async {
     final ws = client['workspace'] as Map<String, dynamic>?;
     if (ws == null) {
       try {
         final created = await _api.post('/workspaces', {'client_id': client['id']});
         final newWs = created['workspace'] as Map<String, dynamic>;
-        await _api.setUserData(
-          id: client['id'],
-          name: client['company_name'],
-          workspace: newWs['id'],
-        );
+        await _api.setUserData(workspace: newWs['id']);
         if (!mounted) return;
         context.push('/am/workspace/${newWs['id']}');
       } catch (_) {
@@ -196,11 +167,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
       }
       return;
     }
-    await _api.setUserData(
-      id: client['id'],
-      name: client['company_name'],
-      workspace: ws['id'],
-    );
+    await _api.setUserData(workspace: ws['id']);
     if (!mounted) return;
     context.push('/am/workspace/${ws['id']}');
   }
@@ -335,7 +302,24 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     final loc = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Admin', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay', color: ShadColors.gold)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!_isSA && _api.avatarUrl != null && _api.avatarUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(left: 8),
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundColor: ShadColors.crimson,
+                  backgroundImage: NetworkImage(_api.resolveFileUrl(_api.avatarUrl!)),
+                ),
+              ),
+            Text(
+              _isSA ? 'Admin' : 'Welcome, ${_api.userName ?? ''}',
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, fontFamily: 'Tajawal', color: ShadColors.gold),
+            ),
+          ],
+        ),
         leading: const Padding(
           padding: EdgeInsets.only(left: 8),
           child: ShadLogo(size: 28, showText: false),
@@ -930,7 +914,6 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     final wsActive = wsStatus == 'active';
     final name = client['company_name'] as String? ?? '';
     final person = client['contact_person'] as String? ?? '';
-    final clientId = int.tryParse(client['id']?.toString() ?? '') ?? 0;
     final paymentStatus = client['payment_status'] as String?;
     final signedAt = client['signed_at'] as String?;
 
@@ -949,10 +932,15 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           child: Column(children: [
             Row(children: [
               CircleAvatar(
-                radius: 22,
-                backgroundColor: ShadColors.black,
-                child: Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
-                  style: const TextStyle(color: ShadColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Archivo')),
+                radius: 20,
+                backgroundColor: ShadColors.crimson,
+                backgroundImage: (client['avatar_url'] as String?)?.isNotEmpty == true
+                    ? NetworkImage(_api.resolveFileUrl(client['avatar_url']))
+                    : null,
+                child: (client['avatar_url'] as String?)?.isNotEmpty != true
+                    ? Text(name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(color: ShadColors.gold, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Archivo'))
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -969,9 +957,9 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
-                  wsActive ? 'Active / نشط' : 'Inactive / غير نشط',
+                  wsActive ? 'نشـط' : 'غير نشط',
                   style: TextStyle(
-                    fontSize: 10, fontWeight: FontWeight.w500, letterSpacing: 0.3,
+                    fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.3,
                     color: wsActive ? ShadColors.success : ShadColors.textDisabled,
                     fontFamily: 'Archivo',
                   ),
@@ -983,36 +971,20 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               spacing: 6,
               runSpacing: 4,
               children: [
-                _statusChip(signedAt != null ? 'متعاقد' : 'غير متعاقد', signedAt != null ? ShadColors.success : ShadColors.textDisabled),
-                _statusChip(
-                  paymentStatus == 'approved' ? 'مدفوع' : paymentStatus == 'pending' ? 'معلق' : '—',
-                  paymentStatus == 'approved' ? ShadColors.success : paymentStatus == 'pending' ? ShadColors.warning : ShadColors.textDisabled,
-                ),
-                _statusChip(wsActive ? '✅ تم' : '⏳ لم يتم', wsActive ? ShadColors.success : ShadColors.textDisabled),
+                _statusChip(Icons.description_outlined, signedAt != null ? 'متعاقد' : 'غير متعاقد', signedAt != null ? ShadColors.success : ShadColors.textDisabled),
+                _statusChip(Icons.payment, paymentStatus == 'approved' ? 'مدفوع' : paymentStatus == 'pending' ? 'معلق' : '—',
+                  paymentStatus == 'approved' ? ShadColors.success : paymentStatus == 'pending' ? ShadColors.warning : ShadColors.textDisabled),
+                _statusChip(wsActive ? Icons.check_circle : Icons.schedule, wsActive ? 'نشـط' : 'معلق',
+                  wsActive ? ShadColors.success : ShadColors.textDisabled),
               ],
             ),
-            Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              IconButton(
-                icon: const Icon(Icons.chevron_left, size: 22, color: ShadColors.textSecondary),
-                onPressed: () async {
-                  final changed = await context.push<bool>('/am/clients/${client['id']}');
-                  if (changed == true) _load();
-                },
-                tooltip: 'تفاصيل',
-              ),
-              IconButton(
-                icon: const Icon(Icons.delete_outline, size: 20, color: ShadColors.error),
-                onPressed: () => _deleteClient(clientId, name),
-                tooltip: 'حذف',
-              ),
-            ]),
           ]),
         ),
       ),
     );
   }
 
-  Widget _statusChip(String label, Color color) {
+  Widget _statusChip(IconData icon, String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
@@ -1020,7 +992,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withAlpha(60)),
       ),
-      child: Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500, fontFamily: 'Archivo')),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, size: 11, color: color),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 10, color: color, fontWeight: FontWeight.w500, fontFamily: 'Archivo')),
+      ]),
     );
   }
 

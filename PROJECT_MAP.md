@@ -80,3 +80,11 @@
 - **Dashboard**: Move tokens from `localStorage` to httpOnly cookies (XSS protection)
 - **README**: No README files in any sub-project or root
 - **Docker**: No docker-compose or Dockerfiles
+
+## Fixes Applied (2026-07-17)
+
+| # | Issue | Files Changed |
+|---|-------|-------------|
+| 1 | AM dashboard redesign — bottom nav (4 tabs AM, 5 tabs SA), stats grid, pending approvals, clients preview | `am_dashboard_page.dart` |
+| 2 | Client management design improvements: Home card (remove delete, improve avatar/badge/chips), Clients card (long press → bottom sheet actions), Create form (remove contract_value/notes, add date_of_birth, improve AppBar/button), Detail page (remove notes, add date_of_birth, improve colors) | `am_dashboard_page.dart`, `sa_clients_page.dart`, `create_client_page.dart`, `client_detail_page.dart` |
+| 3 | Backend: `date_of_birth` column for clients | Migration `2026_07_17_000002_add_date_of_birth_to_clients.php`, `Client.php`, `ClientController.php`, `StoreClientRequest.php`, `UpdateClientRequest.php` |

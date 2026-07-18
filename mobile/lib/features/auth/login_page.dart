@@ -52,7 +52,7 @@ class _LoginPageState extends State<LoginPage> {
         final user = data['user'] as Map<String, dynamic>;
         final role = user['role'] as String;
         await _api.setRole(role);
-        await _api.setUserData(id: user['id'], name: user['name']);
+        await _api.setUserData(id: user['id'], name: user['name'], avatar: user['avatar_url'] as String?);
       }
 
       if (!mounted) return;
