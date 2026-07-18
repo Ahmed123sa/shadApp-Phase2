@@ -91,6 +91,19 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
         final data = await _api.get('/clients');
         _allClients = safeList(data['clients']);
         _filter();
+        _pendingContracts = await _fetchAllContracts(['sent', 'client_approved']);
+        try {
+          final pData = await _api.get('/payments/pending');
+          _pendingPayments = safeList(pData['payments']);
+        } catch (_) {
+          _pendingPayments = [];
+        }
+        try {
+          final allContractsData = await _api.get('/all-contracts');
+          _allContracts = safeList(allContractsData['contracts']);
+        } catch (_) {
+          _allContracts = [];
+        }
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -350,61 +363,151 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
           ? const Center(child: CircularProgressIndicator())
           : _buildTabContent(),
       ),
-      bottomNavigationBar: _isSA
-          ? NavigationBar(
+      bottomNavigationBar: NavigationBar(
               selectedIndex: _selectedIndex,
               onDestinationSelected: (i) => setState(() => _selectedIndex = i),
               backgroundColor: const Color(0xFF0D0D0D),
               indicatorColor: ShadColors.crimson.withAlpha(40),
               height: 65,
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: [
-                const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
-                NavigationDestination(
-                  icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
-                  selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),
-                  label: 'الموافقات',
-                ),
-                const NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
-                const NavigationDestination(icon: Icon(Icons.supervisor_account_outlined), selectedIcon: Icon(Icons.supervisor_account, color: ShadColors.gold), label: 'الفريق'),
-                const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
-              ],
-            )
-          : null,
+              destinations: _isSA
+                  ? [
+                      const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                      NavigationDestination(
+                        icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
+                        selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),
+                        label: 'الموافقات',
+                      ),
+                      const NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
+                      const NavigationDestination(icon: Icon(Icons.supervisor_account_outlined), selectedIcon: Icon(Icons.supervisor_account, color: ShadColors.gold), label: 'الفريق'),
+                      const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
+                    ]
+                  : [
+                      const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                      NavigationDestination(
+                        icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
+                        selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),
+                        label: 'الموافقات',
+                      ),
+                      const NavigationDestination(icon: Icon(Icons.people_outline), selectedIcon: Icon(Icons.people, color: ShadColors.gold), label: 'العملاء'),
+                      const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
+                    ],
+            ),
     );
   }
 
   Widget _buildTabContent() {
-    if (!_isSA) {
-      return ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _buildSearchBar(),
-          const SizedBox(height: 16),
-          _buildQuickStats(),
-          const SizedBox(height: 16),
-          _buildFeaturedCards(),
-          const SizedBox(height: 16),
-          if (_filteredClients.isEmpty && _searchController.text.isNotEmpty)
-            _buildNoResults()
-          else if (_allClients.isEmpty)
-            _buildEmptyState()
-          else
-            Text('All Clients / كل العملاء', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, letterSpacing: 0.5, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
-          const SizedBox(height: 8),
-          if (_filteredClients.isNotEmpty)
-            ..._filteredClients.map((c) => _clientCard(c)),
-        ],
-      );
+    if (_isSA) {
+      switch (_selectedIndex) {
+        case 0: return _buildHomeTab();
+        case 1: return _buildApprovalsTab();
+        case 2: return _buildClientsTab();
+        case 3: return _buildTeamTab();
+        case 4: return _buildSettingsTab();
+        default: return _buildHomeTab();
+      }
     }
     switch (_selectedIndex) {
-      case 0: return _buildHomeTab();
+      case 0: return _buildAmHomeTab();
       case 1: return _buildApprovalsTab();
-      case 2: return _buildClientsTab();
-      case 3: return _buildTeamTab();
-      case 4: return _buildSettingsTab();
-      default: return _buildHomeTab();
+      case 2: return _buildAmClientsTab();
+      case 3: return _buildSettingsTab();
+      default: return _buildAmHomeTab();
     }
+  }
+
+  Widget _buildAmHomeTab() {
+    final totalClients = _allClients.length;
+    final activeContracts = _allContracts.where((c) => c['status'] == 'company_approved' || c['status'] == 'completed').length;
+    final totalPending = _pendingContracts.length + _pendingPayments.length;
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Row(children: [
+          Expanded(child: _homeStatCard('إجمالي العملاء', '$totalClients', Icons.people, ShadColors.sent)),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('العقود النشطة', '$activeContracts', Icons.description, ShadColors.gold)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _homeStatCard('مدفوعات معلقة', '${_pendingPayments.length}', Icons.payments, ShadColors.warning)),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('موافقات معلّقة', '$totalPending', Icons.pending_actions, ShadColors.crimson)),
+        ]),
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(child: _homeStatCard('التقارير', '', Icons.bar_chart, ShadColors.gold, onTap: () => context.push('/am/reports'))),
+          const SizedBox(width: 8),
+          Expanded(child: _homeStatCard('الاجتماعات', '', Icons.videocam, ShadColors.sent, onTap: _createMeeting)),
+        ]),
+        const SizedBox(height: 20),
+        Row(children: [
+          const Text('آخر الموافقات المعلّقة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 1),
+            child: const Text('عرض الكل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (_pendingContracts.isEmpty && _pendingPayments.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(child: Text('لا توجد موافقات معلّقة', style: TextStyle(fontSize: 12, color: ShadColors.textDisabled, fontFamily: 'Archivo'))),
+          )
+        else ...[
+          if (_pendingContracts.isNotEmpty)
+            ..._pendingContracts.take(2).map((c) => _approvalItem(
+              title: 'اعتماد عقد — ${c['title'] ?? ''}',
+              subtitle: '${c['company'] ?? ''} • ${double.tryParse(c['value']?.toString() ?? '')?.toStringAsFixed(0) ?? '0'} ${c['currency'] ?? ''}',
+              isContract: true,
+            )),
+          if (_pendingPayments.isNotEmpty)
+            ..._pendingPayments.take(2).map((p) {
+              final client = p['workspace']?['client'] as Map<String, dynamic>?;
+              return _approvalItem(
+                title: 'اعتماد دفعة — ${client?['company_name'] ?? 'عميل'}',
+                subtitle: '${p['currency'] ?? ''} ${(double.tryParse(p['amount']?.toString() ?? '') ?? 0).toStringAsFixed(0)}',
+                isContract: false,
+              );
+            }),
+        ],
+        const SizedBox(height: 20),
+        Row(children: [
+          const Text('العملاء', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => setState(() => _selectedIndex = 2),
+            child: const Text('عرض الكل', style: TextStyle(fontSize: 11, color: ShadColors.gold, fontFamily: 'Archivo')),
+          ),
+        ]),
+        const SizedBox(height: 8),
+        if (_allClients.isNotEmpty)
+          ..._allClients.take(3).map((c) => _clientCard(c)),
+        if (_allClients.isEmpty)
+          _buildEmptyState(),
+      ],
+    );
+  }
+
+  Widget _buildAmClientsTab() {
+    return Stack(
+      children: [
+        const SaClientsPage(),
+        Positioned(
+          bottom: 16,
+          left: 16,
+          child: FloatingActionButton(
+            onPressed: () async {
+              final created = await context.push<bool>('/am/clients/create');
+              if (created == true) _load();
+            },
+            backgroundColor: ShadColors.gold,
+            child: const Icon(Icons.person_add, color: Colors.black),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildHomeTab() {
