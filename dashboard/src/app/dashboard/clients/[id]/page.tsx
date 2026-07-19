@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import type { Client } from '@/types';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -31,7 +32,6 @@ type Tab = (typeof TABS)[number];
 
 export default function ClientWorkspace() {
   const { id } = useParams();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [client, setClient] = useState<Client | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('المحادثة');
@@ -43,17 +43,10 @@ export default function ClientWorkspace() {
     }
   }, [searchParams]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
-  const [editForm, setEditForm] = useState({ company_name: '', contact_person: '', phone: '', country: '', industry: '', notes: '' });
 
-  const load = () => api.get(`/clients/${id}`).then(({ data }) => { setClient(data.client); setEditForm({ company_name: data.client.company_name, contact_person: data.client.contact_person, phone: data.client.phone || '', country: data.client.country || '', industry: data.client.industry || '', notes: data.client.notes || '' }); }).catch(() => {}).finally(() => setLoading(false));
+  const load = () => api.get(`/clients/${id}`).then(({ data }) => { setClient(data.client); }).catch(() => {}).finally(() => setLoading(false));
   useEffect(() => { load(); }, [id]);
-
-  const saveEdit = async () => {
-    const { data } = await api.put(`/clients/${id}`, editForm).catch(() => ({ data: null }));
-    if (data) { setClient(data.client); setEditing(false); }
-  };
 
   const deleteClient = async () => {
     await api.delete(`/clients/${id}`).catch(() => {});
@@ -69,46 +62,31 @@ export default function ClientWorkspace() {
   return (
     <div className="space-y-6">
       <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5 border-r-2 border-r-[var(--color-primary)]">
-        {editing ? (
-          <div className="space-y-2">
-            <div className="flex gap-2 flex-wrap">
-              <input value={editForm.company_name} onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-48" placeholder="اسم الشركة" />
-              <input value={editForm.contact_person} onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-36" placeholder="الشخص المسؤول" />
-              <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="الهاتف" />
-              <input value={editForm.country} onChange={(e) => setEditForm({ ...editForm, country: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="البلد" />
-              <input value={editForm.industry} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} className="bg-[var(--color-input-fill)] border-[var(--color-input-border)] text-[var(--color-foreground)] rounded px-3 py-1 text-sm w-28" placeholder="المجال" />
-              <button onClick={saveEdit} className="bg-[var(--color-primary)] text-white px-4 py-1.5 rounded-lg text-xs font-medium hover:bg-[var(--color-primary-dark)]">حفظ</button>
-              <button onClick={() => setEditing(false)} className="bg-[var(--color-input-fill)] hover:bg-[var(--color-card-border)] px-3 py-1.5 rounded-lg text-xs transition-colors">إلغاء</button>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-full bg-[var(--color-input-fill)] overflow-hidden border-2 border-[var(--color-card-border)] flex-shrink-0">
+              {client.avatar_url ? (
+                <img src={resolveFileUrl(client.avatar_url)} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-lg text-[var(--color-text-disabled)]">
+                  {client.company_name?.[0] || '?'}
+                </div>
+              )}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">{client.company_name}</h2>
+              <p className="text-sm text-[var(--color-text-secondary)]">{client.contact_person} • {client.email}{client.country ? ` • ${client.country}` : ''}{client.industry ? ` • ${client.industry}` : ''}</p>
             </div>
           </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-[var(--color-input-fill)] overflow-hidden border-2 border-[var(--color-card-border)] flex-shrink-0">
-                {client.avatar_url ? (
-                  <img src={resolveFileUrl(client.avatar_url)} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg text-[var(--color-text-disabled)]">
-                    {client.company_name?.[0] || '?'}
-                  </div>
-                )}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">{client.company_name}</h2>
-                <p className="text-sm text-[var(--color-text-secondary)]">{client.contact_person} • {client.email}{client.country ? ` • ${client.country}` : ''}{client.industry ? ` • ${client.industry}` : ''}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {!isSA && <button onClick={() => router.push(`/dashboard/clients/${id}/settings`)} className="text-xs bg-[var(--color-input-fill)] hover:bg-[var(--color-card-border)] px-3 py-1.5 rounded-lg transition-colors">⚙️</button>}
-              {!isSA && <button onClick={() => setEditing(true)} className="text-xs text-[var(--color-primary)] hover:underline font-medium">تعديل</button>}
-              {!isSA && <button onClick={() => setDeleteConfirm(true)} className="text-xs text-red-400 hover:underline">حذف</button>}
-              <StatusBadge status={client.workspace?.status === 'active' ? 'active' : 'inactive'} />
-              <span className={`px-2.5 py-1 rounded-full text-xs ${client.signed_at ? 'bg-purple-900/30 text-purple-400' : 'bg-[var(--color-input-fill)] text-[var(--color-text-secondary)]'}`}>
-                {client.signed_at ? 'تم التوقيع ✅' : 'لم يتم التوقيع'}
-              </span>
-            </div>
+          <div className="flex items-center gap-2">
+            {!isSA && <Link href={`/dashboard/clients/${id}/settings`} className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--color-card-border)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-foreground)]" title="إعدادات">⚙️</Link>}
+            {!isSA && <button onClick={() => setDeleteConfirm(true)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-900/30 transition-colors text-[var(--color-text-secondary)] hover:text-red-400" title="حذف">🗑️</button>}
+            <StatusBadge status={client.workspace?.status === 'active' ? 'active' : 'inactive'} />
+            <span className={`px-2.5 py-1 rounded-full text-xs ${client.signed_at ? 'bg-purple-900/30 text-purple-400' : 'bg-[var(--color-input-fill)] text-[var(--color-text-secondary)]'}`}>
+              {client.signed_at ? 'تم التوقيع ✅' : 'لم يتم التوقيع'}
+            </span>
           </div>
-        )}
+        </div>
       </div>
 
       <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] overflow-hidden">

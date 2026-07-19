@@ -13,8 +13,6 @@ export default function ClientsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ company_name: '', contact_person: '', email: '', phone: '', password: '', notes: '', date_of_birth: '', send_email: true });
   const [newCreds, setNewCreds] = useState<any>(null);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState({ company_name: '', contact_person: '', phone: '', notes: '', date_of_birth: '' });
   const [createError, setCreateError] = useState('');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState('');
@@ -52,16 +50,6 @@ export default function ClientsPage() {
     } catch (err: any) {
       setCreateError(err?.response?.data?.message || 'فشل إنشاء العميل');
     }
-  };
-
-  const startEdit = (c: any) => {
-    setEditingId(c.id);
-    setEditForm({ company_name: c.company_name, contact_person: c.contact_person, phone: c.phone || '', notes: c.notes || '', date_of_birth: c.date_of_birth || '' });
-  };
-
-  const saveEdit = async (id: number) => {
-    const { data } = await api.put(`/clients/${id}`, editForm).catch(() => ({ data: null }));
-    if (data) { setClients((prev) => prev.map((c) => c.id === id ? data.client : c)); setEditingId(null); }
   };
 
   const deleteClient = async (id: number) => {
@@ -141,34 +129,18 @@ export default function ClientsPage() {
           <tbody>
             {clients.map((client) => (
               <tr key={client.id} className="border-b border-[var(--color-card-border)] hover:bg-[var(--color-card-border)]">
-                {editingId === client.id ? (
-                  <td colSpan={5} className="p-3">
-                    <div className="flex gap-2 items-center flex-wrap">
-                      <input value={editForm.company_name} onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-40" />
-                      <input value={editForm.contact_person} onChange={(e) => setEditForm({ ...editForm, contact_person: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-32" />
-                      <input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-28" />
-                      <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-40" placeholder="ملاحظات" />
-                      <input type="date" value={editForm.date_of_birth} onChange={(e) => setEditForm({ ...editForm, date_of_birth: e.target.value })} className="border border-[var(--color-card-border)] rounded px-2 py-1 text-sm w-36" />
-                      <button onClick={() => saveEdit(client.id)} className="bg-[var(--color-primary)] text-white px-3 py-1 rounded text-xs font-medium hover:bg-[var(--color-primary-dark)]">حفظ</button>
-                      <button onClick={() => setEditingId(null)} className="bg-[var(--color-input-fill)] px-3 py-1 rounded text-xs hover:bg-[var(--color-card-border)]">إلغاء</button>
-                    </div>
-                  </td>
-                ) : (
-                  <>
-                    <td className="p-4">
-                      <Link href={`/dashboard/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline font-medium">{client.company_name}</Link>
-                    </td>
-                    <td className="p-4 text-[var(--color-text-secondary)]">{client.contact_person}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded-full text-xs ${client.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-zinc-700/30 text-zinc-400'}`}>{client.status}</span>
-                    </td>
-                    <td className="p-4">{client.workspace ? (client.workspace.status === 'active' ? '🟢 نشط' : '⏳ غير مفعل') : '—'}</td>
-                    <td className="p-4 text-left whitespace-nowrap">
-                      {!isSA && <button onClick={() => startEdit(client)} className="text-xs text-[var(--color-gold)] hover:underline ml-2">تعديل</button>}
-                      {!isSA && <button onClick={() => deleteClient(client.id)} className="text-xs text-red-500 hover:underline">حذف</button>}
-                    </td>
-                  </>
-                )}
+                <td className="p-4">
+                  <Link href={`/dashboard/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline font-medium">{client.company_name}</Link>
+                </td>
+                <td className="p-4 text-[var(--color-text-secondary)]">{client.contact_person}</td>
+                <td className="p-4">
+                  <span className={`px-2 py-1 rounded-full text-xs ${client.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-zinc-700/30 text-zinc-400'}`}>{client.status}</span>
+                </td>
+                <td className="p-4">{client.workspace ? (client.workspace.status === 'active' ? '🟢 نشط' : '⏳ غير مفعل') : '—'}</td>
+                <td className="p-4 text-left whitespace-nowrap">
+                  {!isSA && <Link href={`/dashboard/clients/${client.id}/settings`} className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-[var(--color-card-border)] transition-colors text-[var(--color-text-secondary)] hover:text-[var(--color-foreground)]" title="إعدادات">⚙️</Link>}
+                  {!isSA && <button onClick={() => deleteClient(client.id)} className="inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-900/30 transition-colors text-[var(--color-text-secondary)] hover:text-red-400" title="حذف">🗑️</button>}
+                </td>
               </tr>
             ))}
           </tbody>

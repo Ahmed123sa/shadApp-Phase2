@@ -182,6 +182,7 @@ function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, un
   t: any; locale: string; clients: Client[]; allContracts: Contract[];
   allPayments: Payment[]; allMeetings: Meeting[]; unreadCount: number;
 }) {
+  const router = useRouter();
   const totalClients = clients.length;
   const activeContracts = allContracts.filter(c => c.status === 'company_approved' || c.status === 'completed').length;
   const pendingContractsCount = allContracts.filter(c => c.status === 'sent' || c.status === 'client_approved').length;
@@ -232,7 +233,8 @@ function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, un
               </thead>
               <tbody>
                 {clients.slice(0, 5).map((c, i) => (
-                  <tr key={c.id} className="row-slide hover:bg-white/[0.025]" style={{ animationDelay: `${(i + 1) * 50}ms` }}>
+                  <tr key={c.id} className="row-slide hover:bg-white/[0.025] cursor-pointer" style={{ animationDelay: `${(i + 1) * 50}ms` }}
+                    onClick={() => router.push(`/dashboard/clients/${c.id}`)}>
                     <td className="px-3.5 py-2.5 border-b border-white/[0.04]">
                       <div className="flex items-center gap-2">
                         {c.avatar_url ? (
@@ -285,14 +287,44 @@ function SAManagersView({ t, locale, managers, allContracts, allPayments, allMee
   approvedContracts.forEach(c => {
     activityItems.push({ color: 'green', text: `عقد <b>${c.workspace?.client?.company_name || '#' + c.id}</b> اعتُمد`, time: timeAgo(c.created_at || new Date().toISOString(), locale) });
   });
+  const clientApprovedContracts = allContracts.filter(c => c.status === 'client_approved').slice(0, 2);
+  clientApprovedContracts.forEach(c => {
+    activityItems.push({ color: 'gold', text: `عميل <b>${c.workspace?.client?.company_name || '#' + c.id}</b> وافق على العقد`, time: timeAgo(c.created_at || new Date().toISOString(), locale) });
+  });
+  const sentContracts = allContracts.filter(c => c.status === 'sent').slice(0, 1);
+  sentContracts.forEach(c => {
+    activityItems.push({ color: 'blue', text: `تم إرسال عقد <b>${c.workspace?.client?.company_name || '#' + c.id}</b>`, time: timeAgo(c.created_at || new Date().toISOString(), locale) });
+  });
   const recentPayments = allPayments.slice(0, 2);
   recentPayments.forEach(p => {
     activityItems.push({ color: 'gold', text: `دفعة <b>${Number(p.amount).toLocaleString()} ${p.currency || 'SAR'}</b> من <b>${p.workspace?.client?.company_name || 'عميل'}</b>`, time: timeAgo(p.created_at, locale) });
   });
-  const recentMeetings = allMeetings.slice(0, 1);
+  const recentMeetings = allMeetings.slice(0, 2);
   recentMeetings.forEach(m => {
-    activityItems.push({ color: 'blue', text: `اجتماع <b>${m.title}</b>`, time: timeAgo(m.created_at || m.scheduled_at, locale) });
+    activityItems.push({ color: 'blue', text: `اجتماع <b>${m.title}</b>${m.workspace?.client?.company_name ? ` مع <b>${m.workspace.client.company_name}</b>` : ''}`, time: timeAgo(m.created_at || m.scheduled_at, locale) });
   });
+
+  const [expandedManager, setExpandedManager] = useState<number | null>(null);
+  const [managerClients, setManagerClients] = useState<Client[]>([]);
+  const [managerClientsLoading, setManagerClientsLoading] = useState(false);
+
+  const toggleManager = async (managerId: number) => {
+    if (expandedManager === managerId) {
+      setExpandedManager(null);
+      setManagerClients([]);
+      return;
+    }
+    setExpandedManager(managerId);
+    setManagerClientsLoading(true);
+    try {
+      const { data } = await api.get(`/account-managers/${managerId}`);
+      setManagerClients(data.clients || []);
+    } catch {
+      setManagerClients([]);
+    } finally {
+      setManagerClientsLoading(false);
+    }
+  };
 
   return (
     <div className="rounded-xl border border-[var(--border)] overflow-hidden" style={{ minHeight: '640px' }}>
@@ -320,10 +352,42 @@ function SAManagersView({ t, locale, managers, allContracts, allPayments, allMee
               </thead>
               <tbody>
                 {managers.map((m, i) => (
-                  <ManagerTableRow key={m.id} manager={m} index={i} />
+                  <ManagerTableRow
+                    key={m.id} manager={m} index={i}
+                    expanded={expandedManager === m.id}
+                    onToggle={() => toggleManager(m.id)}
+                  />
                 ))}
               </tbody>
             </table>
+            {expandedManager && (
+              <div className="border-t border-[var(--border)] bg-white/[0.015]">
+                {managerClientsLoading ? (
+                  <div className="p-4 text-center text-[11px] text-[var(--color-text-secondary)]">{locale === 'ar' ? 'جاري تحميل العملاء...' : 'Loading clients...'}</div>
+                ) : managerClients.length === 0 ? (
+                  <div className="p-4 text-center text-[11px] text-[var(--color-text-secondary)]">{locale === 'ar' ? 'لا يوجد عملاء' : 'No clients'}</div>
+                ) : (
+                  <div className="divide-y divide-white/[0.04]">
+                    {managerClients.map((c) => (
+                      <Link
+                        key={c.id}
+                        href={c.workspace ? `/dashboard/clients/${c.id}` : '#'}
+                        className="flex items-center gap-3 px-5 py-2.5 hover:bg-white/[0.03] transition-colors"
+                      >
+                        <div className="w-7 h-7 rounded-full bg-[var(--color-crimson-soft)] border border-[var(--color-crimson-border)] flex items-center justify-center text-[9px] font-bold text-[var(--color-gold)] flex-shrink-0">
+                          {c.company_name?.slice(0, 2) || '?'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[11.5px] font-bold truncate">{c.company_name}</div>
+                          <div className="text-[9.5px] text-[var(--color-text-secondary)]">{c.contact_person}</div>
+                        </div>
+                        <StatusBadge status={c.workspace?.status || c.status} />
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-3.5">
