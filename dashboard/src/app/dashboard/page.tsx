@@ -120,6 +120,7 @@ export default function DashboardHome() {
   const [allMeetings, setAllMeetings] = useState<Meeting[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<Approval[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadClientsCount, setUnreadClientsCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -138,6 +139,7 @@ export default function DashboardHome() {
         setAllMeetings(meetingsRes.data.meetings?.data || meetingsRes.data.meetings || []);
         setPendingApprovals(approvalsRes.data.approvals || []);
         setUnreadCount(notifRes.data.unread_count || 0);
+        setUnreadClientsCount(notifRes.data.unread_clients_count || 0);
       }).finally(() => setLoading(false));
     } else {
       Promise.all([
@@ -152,6 +154,7 @@ export default function DashboardHome() {
         setAllPayments(paymentsRes.data.payments?.data || paymentsRes.data.payments || []);
         setAllMeetings(meetingsRes.data.meetings?.data || meetingsRes.data.meetings || []);
         setUnreadCount(notifRes.data.unread_count || 0);
+        setUnreadClientsCount(notifRes.data.unread_clients_count || 0);
       }).finally(() => setLoading(false));
     }
   }, [isSA]);
@@ -174,13 +177,13 @@ export default function DashboardHome() {
 
   return <AMView
     t={t} locale={locale} clients={clients} allContracts={allContracts}
-    allPayments={allPayments} allMeetings={allMeetings} unreadCount={unreadCount}
+    allPayments={allPayments} allMeetings={allMeetings} unreadCount={unreadCount} unreadClientsCount={unreadClientsCount}
   />;
 }
 
-function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, unreadCount }: {
+function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, unreadCount, unreadClientsCount }: {
   t: any; locale: string; clients: Client[]; allContracts: Contract[];
-  allPayments: Payment[]; allMeetings: Meeting[]; unreadCount: number;
+  allPayments: Payment[]; allMeetings: Meeting[]; unreadCount: number; unreadClientsCount: number;
 }) {
   const router = useRouter();
   const totalClients = clients.length;
@@ -214,7 +217,7 @@ function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, un
           <DashboardStatCard label={t('my_clients')} value={totalClients} icon="👥" color="crimson" subtitle={`+2 ${t('subtitle_this_month')}`} />
           <DashboardStatCard label={t('active_contracts')} value={activeContracts} icon="📄" subtitle={`${pendingContractsCount} ${locale === 'ar' ? 'تنتظر رد' : 'awaiting response'}`} />
           <DashboardStatCard label={t('pending_payments')} value={pendingPaymentsCount} icon="💳" color="gold" subtitle={t('subtitle_needs_action')} />
-          <DashboardStatCard label={t('unread_messages')} value={unreadCount} icon="💬" color="crimson" subtitle={t('subtitle_from_clients', { count: 3 })} />
+          <DashboardStatCard label={t('unread_messages')} value={unreadCount} icon="💬" color="crimson" subtitle={t('subtitle_from_clients', { count: unreadClientsCount })} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-3.5">

@@ -116,11 +116,37 @@ class NotificationController extends Controller
         }
 
         $unreadCount = $allNotifications->whereNull('read_at')->count();
+
+        $unreadClientIds = collect();
+        if ($unreadCount > 0) {
+            $unreadNotifications = $allNotifications->whereNull('read_at');
+            foreach ($unreadNotifications as $n) {
+                $data = $n->data ?? [];
+                $workspaceId = null;
+                if (isset($data['contract_id'])) {
+                    $contract = Contract::find($data['contract_id']);
+                    $workspaceId = $contract?->workspace_id;
+                } elseif (isset($data['payment_id'])) {
+                    $payment = Payment::find($data['payment_id']);
+                    $workspaceId = $payment?->workspace_id;
+                } elseif (isset($data['approval_id'])) {
+                    $approval = Approval::find($data['approval_id']);
+                    $workspaceId = $approval?->workspace_id;
+                }
+                if ($workspaceId) {
+                    $ws = Workspace::find($workspaceId);
+                    if ($ws) $unreadClientIds->push($ws->client_id);
+                }
+            }
+        }
+        $unreadClientsCount = $unreadClientIds->unique()->count();
+
         $notifications = $allNotifications->take(50);
 
         return response()->json([
             'notifications' => $notifications,
             'unread_count' => $unreadCount,
+            'unread_clients_count' => $unreadClientsCount,
         ]);
     }
 

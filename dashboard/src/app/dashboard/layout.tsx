@@ -76,6 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { href: '/dashboard', label: t('home'), icon: '📊', exact: true },
         { href: '/dashboard/clients', label: t('all_clients'), icon: '👥' },
         { href: '/dashboard/reports', label: t('reports'), icon: '📈' },
+        { href: '/dashboard/audit-log', label: t('audit_log'), icon: '📋' },
       ],
     },
     {
@@ -130,6 +131,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (pathname.startsWith('/dashboard/clients')) return t('my_clients');
     if (pathname.startsWith('/dashboard/account-managers')) return t('account_managers');
     if (pathname.startsWith('/dashboard/reports')) return t('reports');
+    if (pathname.startsWith('/dashboard/audit-log')) return t('audit_log');
     if (pathname.startsWith('/dashboard/settings')) return t('settings');
     return t('title');
   };

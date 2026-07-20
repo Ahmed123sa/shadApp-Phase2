@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Events\ContractCompanyApproved;
+use App\Models\SystemSetting;
 
 class PaymentController extends Controller
 {
@@ -66,10 +67,24 @@ class PaymentController extends Controller
         $client = $workspace->client;
         $methods = $client->client_type === 'individual' ? self::INDIVIDUAL_METHODS : self::BUSINESS_METHODS;
 
+        $contractsTotal = $workspace->contracts()
+            ->whereIn('status', ['client_approved', 'company_approved', 'completed'])
+            ->sum('value');
+
+        $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+        $isBusiness = $client->client_type === 'business';
+        $taxAmount = $isBusiness ? ($contractsTotal * $taxPercentage / 100) : 0;
+
         return response()->json([
             'payments' => $workspace->payments()->with('contract')->latest()->get(),
             'available_methods' => $methods,
             'client_type' => $client->client_type,
+            'tax_summary' => [
+                'contracts_total' => (float) $contractsTotal,
+                'tax_percentage' => $isBusiness ? $taxPercentage : 0,
+                'tax_amount' => $taxAmount,
+                'grand_total' => $contractsTotal + $taxAmount,
+            ],
         ]);
     }
 

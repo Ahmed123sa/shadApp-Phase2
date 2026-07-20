@@ -9,7 +9,6 @@ import '../../../core/theme.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../../core/widgets/chat_contract_card.dart';
 import '../../../core/widgets/meeting_chip.dart';
-import '../widgets/contract_builder.dart';
 
 class ChatTab extends StatefulWidget {
   final int? workspaceId;
@@ -597,23 +596,6 @@ class _ChatTabState extends State<ChatTab> {
             border: Border(top: BorderSide(color: ShadColors.cardBorder, width: 0.5)),
           ),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              child: SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => ContractBuilder.show(context, onCreated: _load, isAdditional: true),
-                  icon: const Icon(Icons.description, size: 16),
-                  label: const Text('📄 إرسال عقد خدمة إضافية'),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ShadColors.primary,
-                    side: const BorderSide(color: ShadColors.primary, width: 0.5),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                  ),
-                ),
-              ),
-            ),
             GestureDetector(
               onTap: () => setState(() => _requestApproval = !_requestApproval),
               child: Padding(

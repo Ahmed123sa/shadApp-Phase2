@@ -10,6 +10,7 @@ use App\Models\ContractClause;
 use App\Models\Payment;
 use App\Models\Meeting;
 use App\Models\FileEntry;
+use App\Models\SystemSetting;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -57,6 +58,8 @@ class DatabaseSeeder extends Seeder
             'contract_type' => 'main',
             'value' => 150000,
             'created_by' => $manager->id,
+            'start_date' => now()->subDays(10),
+            'end_date' => now()->addDays(80),
         ]);
 
         $contract->clauses()->createMany([
@@ -150,6 +153,9 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(ContractClauseTemplateSeeder::class);
+
+        // --- System Settings ---
+        SystemSetting::setValue('corporate_tax_percentage', 15, 'نسبة ضريبة الشركات المقدرة (%)');
 
         $this->command->info('Demo data seeded successfully!');
         $this->command->info('Super Admin: admin@shadapp.com / password');

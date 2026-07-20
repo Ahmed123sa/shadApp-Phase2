@@ -26,6 +26,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   String? _existingSigUrl;
   String? _existingSigText;
   String? _avatarUrl;
+  final _taxController = TextEditingController();
+  bool _taxSaving = false;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
     _emailController.dispose();
     _nameController.dispose();
     _sigTextController.dispose();
+    _taxController.dispose();
     super.dispose();
   }
 
@@ -58,6 +61,13 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
         }
       }
     } catch (_) {}
+    if (_api.role == 'super_admin') {
+      try {
+        final settingsData = await _api.get('/settings');
+        final settings = settingsData['settings'] as Map<String, dynamic>? ?? {};
+        _taxController.text = (settings['corporate_tax_percentage']?['value'] ?? '15').toString();
+      } catch (_) {}
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -73,6 +83,22 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل حفظ الإعدادات: $e')));
     }
     if (mounted) setState(() => _saving = false);
+  }
+
+  Future<void> _saveTax() async {
+    final value = double.tryParse(_taxController.text.trim());
+    if (value == null || value < 0 || value > 100) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('أدخل نسبة صحيحة (0-100)')));
+      return;
+    }
+    setState(() => _taxSaving = true);
+    try {
+      await _api.put('/settings', {'key': 'corporate_tax_percentage', 'value': value});
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم حفظ نسبة الضريبة')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل حفظ الضريبة: $e')));
+    }
+    if (mounted) setState(() => _taxSaving = false);
   }
 
   Future<void> _pickAvatar() async {
@@ -460,6 +486,57 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                     ),
                   ),
                 ],
+              ]),
+            ),
+          ],
+          const SizedBox(height: 32),
+
+          // ═══════════════════════════════════════
+          // Section 3: إعدادات النظام (SA only)
+          // ═══════════════════════════════════════
+          if (!isAM) ...[
+            _sectionHeader(Icons.settings_suggest_outlined, 'إعدادات النظام'),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ShadColors.card,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: ShadColors.cardBorder),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('ضريبة الشركات', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
+                const SizedBox(height: 4),
+                Text('النسبة المئوية للضريبة المضافة على قيمة العقود للعملاء من نوع شركات', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(
+                    child: _settingsField(
+                      controller: _taxController,
+                      label: 'نسبة الضريبة (%)',
+                      icon: Icons.percent,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('%', style: TextStyle(fontSize: 14, color: ShadColors.textSecondary)),
+                ]),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _taxSaving ? null : _saveTax,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ShadColors.gold,
+                      foregroundColor: ShadColors.background,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: _taxSaving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('حفظ نسبة الضريبة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, fontFamily: 'Archivo')),
+                  ),
+                ),
               ]),
             ),
           ],

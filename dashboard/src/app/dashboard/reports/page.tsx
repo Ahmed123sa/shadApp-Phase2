@@ -2,184 +2,171 @@
 
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts';
+import Link from 'next/link';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
+import DashboardStatCard from '@/components/dashboard/DashboardStatCard';
 
-const PIE_COLORS = ['#22C55E', '#EF4444', '#EAB308'];
 const STATUS_LABELS: Record<string, string> = {
   draft: 'مسودة', sent: 'مرسل', client_approved: 'موافقة عميل', client_rejected: 'رفض عميل',
   company_approved: 'موافقة شركة', completed: 'مكتمل', archived: 'مؤرشف',
 };
-const ACTION_LABELS: Record<string, string> = {
-  'contract.created': 'إنشاء عقد',
-  'contract.sent': 'إرسال عقد',
-  'contract.client_approved': 'اعتماد العميل للعقد',
-  'contract.client_rejected': 'رفض العميل للعقد',
-  'contract.edit_requested': 'طلب تعديل العقد',
-  'contract.company_approved': 'اعتماد الشركة للعقد',
-  'contract.completed': 'إكمال العقد',
-  'contract.archived': 'أرشفة العقد',
-  'workspace.created': 'إنشاء مساحة عمل',
-  'workspace.activated': 'تفعيل مساحة العمل',
-  'payment.submitted': 'تقديم دفعة',
-  'payment.approved': 'اعتماد دفعة',
-  'payment.rejected': 'رفض دفعة',
-  'approval.created': 'إنشاء طلب موافقة',
-  'approval.approved': 'الموافقة على الطلب',
-  'approval.rejected': 'رفض الطلب',
-  'approval.edit_requested': 'طلب تعديل الموافقة',
-  'file.uploaded': 'رفع ملف',
-  'file.approved': 'الموافقة على الملف',
-  'file.rejected': 'رفض الملف',
-  'login': 'تسجيل دخول',
-  'meeting.created': 'إنشاء اجتماع',
-  'client.created': 'إنشاء عميل',
-  'client.deleted': 'حذف عميل',
+
+const STATUS_COLORS: Record<string, string> = {
+  draft: '#71717a', sent: '#3b82f6', client_approved: '#22c55e', client_rejected: '#ef4444',
+  company_approved: '#a855f7', completed: '#10b981', archived: '#6b7280',
+};
+
+const SUMMARY_CONFIG: Record<string, { label: string; icon: string; color?: string }> = {
+  total_clients: { label: 'إجمالي العملاء', icon: '👥', color: 'crimson' },
+  active_workspaces: { label: 'مساحات العمل النشطة', icon: '🏢', color: 'blue' },
+  pending_payments: { label: 'المدفوعات المعلقة', icon: '💳', color: 'gold' },
+  pending_approvals: { label: 'الموافقات المعلقة', icon: '⏳', color: 'red' },
+  recent_logins: { label: 'تسجيلات الدخول اليوم', icon: '🔑', color: 'green' },
 };
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<any>(null);
-  const [logs, setLogs] = useState<any[]>([]);
-  const [users, setUsers] = useState<any[]>([]);
-  const [filters, setFilters] = useState({ action: '', user_id: '', date_from: '', date_to: '' });
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  const loadLogs = (p: number) => {
-    const params = new URLSearchParams();
-    Object.entries(filters).forEach(([key, value]) => { if (value) params.set(key, value); });
-    params.set('page', String(p));
-    api.get(`/audit-logs?${params.toString()}`).then((res) => {
-      setLogs(res.data?.logs?.data || []);
-      const pagination = res.data?.logs;
-      setTotalPages(pagination?.last_page || 1);
-    }).catch(() => {});
-  };
+  useEffect(() => {
+    api.get('/reports').then(({ data }) => setReports(data)).catch(() => {}).finally(() => setLoading(false));
+  }, []);
 
-  const load = () => {
-    api.get('/reports').then(({ data }) => setReports(data)).catch(() => {});
-    loadLogs(1);
-    api.get('/users').then(({ data }) => setUsers(Array.isArray(data) ? data : data.users || [])).catch(() => {});
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const applyFilters = () => { setPage(1); loadLogs(1); };
+  if (loading) return <div className="text-center py-20 text-[var(--color-text-secondary)]">جاري التحميل...</div>;
 
   const contractsData = reports?.contracts_by_status
-    ? Object.entries(reports.contracts_by_status).map(([status, count]) => ({ status: STATUS_LABELS[status] || status, count }))
+    ? Object.entries(reports.contracts_by_status).map(([status, count]) => ({
+        status: STATUS_LABELS[status] || status,
+        count,
+        fill: STATUS_COLORS[status] || '#71717a',
+      }))
     : [];
 
   const paymentsData = reports?.payments_by_month
     ? Object.entries(reports.payments_by_month).map(([month, amount]) => ({ month, amount }))
     : [];
 
-  const approvalsData = reports?.approval_stats
-    ? Object.entries(reports.approval_stats).map(([name, value]) => ({ name: name === 'approved' ? 'مقبول' : name === 'rejected' ? 'مرفوض' : 'معلق', value }))
-    : [];
+  const approvalStats = reports?.approval_stats || { approved: 0, rejected: 0, pending: 0 };
+  const totalApprovals = approvalStats.approved + approvalStats.rejected + approvalStats.pending;
+  const approvalData = [
+    { name: 'مقبول', value: approvalStats.approved, fill: '#22c55e' },
+    { name: 'مرفوض', value: approvalStats.rejected, fill: '#ef4444' },
+    { name: 'معلق', value: approvalStats.pending, fill: '#eab308' },
+  ];
 
-  const summaryCards = reports ? Object.entries(reports).filter(([k]) => !['contracts_by_status', 'payments_by_month', 'approval_stats'].includes(k)) : [];
+  const summaryKeys = Object.keys(SUMMARY_CONFIG).filter(k => reports?.[k] !== undefined);
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold">التقارير وسجل التدقيق</h2>
-
-      {/* Filters */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <select value={filters.action} onChange={(e) => setFilters({ ...filters, action: e.target.value })}
-          className="border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm">
-          <option value="">كل الأحداث</option>
-          {Object.entries(ACTION_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
-        <select value={filters.user_id} onChange={(e) => setFilters({ ...filters, user_id: e.target.value })}
-          className="border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm">
-          <option value="">كل المستخدمين</option>
-          {users.map((u: any) => (
-            <option key={u.id} value={u.id}>{u.name}</option>
-          ))}
-        </select>
-        <input type="date" value={filters.date_from} onChange={(e) => setFilters({ ...filters, date_from: e.target.value })} className="border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm" />
-        <input type="date" value={filters.date_to} onChange={(e) => setFilters({ ...filters, date_to: e.target.value })} className="border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm" />
-        <button onClick={applyFilters} className="bg-[var(--color-primary)] text-white px-4 py-2 rounded-lg text-sm hover:bg-[var(--color-primary-dark)]">تطبيق</button>
+    <div className="space-y-5">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>التقارير</h2>
+        <Link href="/dashboard/audit-log" className="text-xs text-[var(--color-gold)] hover:underline">عرض سجل التدقيق ←</Link>
       </div>
 
-      {/* Summary Cards */}
-      {reports && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {summaryCards.map(([key, val]) => (
-              <div key={key} className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-4">
-              <p className="text-sm text-[var(--color-text-secondary)]">{key}</p>
-              <p className="text-2xl font-bold mt-1">{val as number}</p>
+      {summaryKeys.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+          {summaryKeys.map((key) => {
+            const config = SUMMARY_CONFIG[key];
+            return (
+              <DashboardStatCard
+                key={key}
+                label={config.label}
+                value={reports[key]}
+                icon={config.icon}
+                color={config.color as any}
+              />
+            );
+          })}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {contractsData.length > 0 && (
+          <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
+            <h3 className="font-bold text-sm mb-4">العقود حسب الحالة</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={contractsData} layout="vertical" margin={{ left: 10, right: 20 }}>
+                <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#a1a1aa' }} />
+                <YAxis dataKey="status" type="category" width={100} tick={{ fontSize: 11, fill: '#a1a1aa' }} />
+                <Tooltip
+                  contentStyle={{ background: '#1c1c1c', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`${value} عقد`, 'العدد']}
+                />
+                <Bar dataKey="count" radius={[0, 4, 4, 0]} name="العدد">
+                  {contractsData.map((entry, idx) => (
+                    <Cell key={idx} fill={entry.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {paymentsData.length > 0 && (
+          <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
+            <h3 className="font-bold text-sm mb-4">المدفوعات حسب الشهر</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={paymentsData} margin={{ top: 5, right: 20, bottom: 5, left: 10 }}>
+                <defs>
+                  <linearGradient id="goldGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#D4AF37" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#a1a1aa' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#a1a1aa' }} />
+                <Tooltip
+                  contentStyle={{ background: '#1c1c1c', border: '1px solid #333', borderRadius: 8, fontSize: 12 }}
+                  labelStyle={{ color: '#fff' }}
+                  formatter={(value: any) => [`${Number(value).toLocaleString()} ر.س`, 'المبلغ']}
+                />
+                <Area type="monotone" dataKey="amount" stroke="#D4AF37" strokeWidth={2} fill="url(#goldGradient)" name="المبلغ" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {totalApprovals > 0 && (
+          <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
+            <h3 className="font-bold text-sm mb-4">إحصائيات الموافقات</h3>
+            <div className="flex items-center justify-center gap-8">
+              <div className="relative">
+                <svg width="160" height="160" viewBox="0 0 160 160">
+                  {approvalData.map((segment, i) => {
+                    const radius = 60;
+                    const circumference = 2 * Math.PI * radius;
+                    const pct = totalApprovals > 0 ? segment.value / totalApprovals : 0;
+                    const offset = approvalData.slice(0, i).reduce((sum, s) => sum + (totalApprovals > 0 ? s.value / totalApprovals : 0), 0);
+                    return (
+                      <circle
+                        key={i}
+                        cx="80" cy="80" r={radius}
+                        fill="none"
+                        stroke={segment.fill}
+                        strokeWidth="20"
+                        strokeDasharray={`${pct * circumference} ${circumference}`}
+                        strokeDashoffset={`${-offset * circumference}`}
+                        transform="rotate(-90 80 80)"
+                      />
+                    );
+                  })}
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>{totalApprovals}</span>
+                  <span className="text-[10px] text-[var(--color-text-secondary)]">إجمالي</span>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {approvalData.map((segment) => (
+                  <div key={segment.name} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ background: segment.fill }} />
+                    <span className="text-xs text-[var(--color-text-secondary)]">{segment.name}</span>
+                    <span className="text-xs font-bold">{segment.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* Chart 1: Contracts by Status (Bar) */}
-      {contractsData.length > 0 && (
-        <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
-          <h3 className="font-semibold mb-3">العقود حسب الحالة</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={contractsData}>
-              <XAxis dataKey="status" />
-              <YAxis allowDecimals={false} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#2563EB" radius={[4, 4, 0, 0]} name="عدد" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Chart 2: Payments Over Time (Line) */}
-      {paymentsData.length > 0 && (
-        <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
-          <h3 className="font-semibold mb-3">المدفوعات حسب الشهر</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={paymentsData}>
-              <XAxis dataKey="month" />
-              <YAxis />
-              <Tooltip formatter={(value) => `${Number(value).toLocaleString()} ر.س` as any} />
-              <Line type="monotone" dataKey="amount" stroke="#2563EB" strokeWidth={2} dot={{ r: 4 }} name="المبلغ" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Chart 3: Approval Stats (Pie) */}
-      {approvalsData.length > 0 && (
-        <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
-          <h3 className="font-semibold mb-3">إحصائيات الموافقات</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie data={approvalsData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                {approvalsData.map((_, idx) => <Cell key={idx} fill={PIE_COLORS[idx % PIE_COLORS.length]} />)}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* Audit Log */}
-      <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-5">
-        <h3 className="font-semibold mb-3">سجل التدقيق</h3>
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {logs.length === 0 && <p className="text-[var(--color-text-disabled)] text-sm">لا توجد سجلات</p>}
-          {logs.map((log: any) => (
-            <div key={log.id} className="flex items-center justify-between text-sm py-1 border-b border-[var(--color-card-border)] last:border-0">
-              <span><span className="font-medium">{ACTION_LABELS[log.action] || log.action}</span>{log.user?.name ? <span className="text-[var(--color-text-disabled)] mr-2">بواسطة {log.user.name}</span> : null}</span>
-              <span className="text-[var(--color-text-disabled)] text-xs whitespace-nowrap">{log.created_at ? new Date(log.created_at).toLocaleString('ar-SA') : '—'}</span>
-            </div>
-          ))}
-        </div>
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-[var(--color-card-border)]">
-            <button onClick={() => { const p = page - 1; setPage(p); loadLogs(p); }} disabled={page <= 1}
-              className="px-3 py-1.5 text-sm rounded border border-[var(--color-card-border)] hover:bg-[var(--color-card-border)] disabled:opacity-40">السابق</button>
-            <span className="text-sm text-[var(--color-text-secondary)]">الصفحة {page} من {totalPages}</span>
-            <button onClick={() => { const p = page + 1; setPage(p); loadLogs(p); }} disabled={page >= totalPages}
-              className="px-3 py-1.5 text-sm rounded border border-[var(--color-card-border)] hover:bg-[var(--color-card-border)] disabled:opacity-40">التالي</button>
           </div>
         )}
       </div>

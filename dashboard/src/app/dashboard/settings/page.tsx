@@ -31,6 +31,9 @@ export default function SettingsPage() {
   const [deletingSig, setDeletingSig] = useState(false);
   const [success, setSuccess] = useState(false);
   const [sigSuccess, setSigSuccess] = useState(false);
+  const [taxPercentage, setTaxPercentage] = useState('15');
+  const [savingTax, setSavingTax] = useState(false);
+  const [taxSuccess, setTaxSuccess] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const sigUploadInputRef = useRef<HTMLInputElement>(null);
@@ -48,6 +51,12 @@ export default function SettingsPage() {
       }
       localStorage.setItem('user', JSON.stringify(u));
     }).catch(() => {});
+    if (!isAM) {
+      api.get('/settings').then(({ data }) => {
+        const v = data.settings?.corporate_tax_percentage?.value;
+        if (v !== undefined) setTaxPercentage(String(v));
+      }).catch(() => {});
+    }
   }, []);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -174,6 +183,22 @@ export default function SettingsPage() {
     }
   };
 
+  const saveTax = async () => {
+    const val = parseFloat(taxPercentage);
+    if (isNaN(val) || val < 0 || val > 100) return;
+    setSavingTax(true);
+    setTaxSuccess(false);
+    try {
+      await api.put('/settings', { key: 'corporate_tax_percentage', value: val });
+      setTaxSuccess(true);
+      setTimeout(() => setTaxSuccess(false), 3000);
+    } catch {
+      // ignore
+    } finally {
+      setSavingTax(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto space-y-8">
       <h1 className="text-2xl font-bold">{t('title')}</h1>
@@ -291,6 +316,27 @@ export default function SettingsPage() {
             {savingSig ? '...' : t('save')}
           </button>
         )}
+      </div>}
+
+      {!isAM && <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-card-border)] p-6 space-y-4">
+        <h2 className="text-lg font-semibold">إعدادات النظام</h2>
+        <p className="text-xs text-[var(--color-text-secondary)]">النسبة المئوية للضريبة المضافة على قيمة العقود للعملاء من نوع شركات</p>
+        {taxSuccess && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 text-emerald-700 text-sm">تم حفظ نسبة الضريبة</div>
+        )}
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <label className="text-sm text-[var(--color-text-secondary)] mb-1 block">نسبة الضريبة (%)</label>
+            <input type="number" min="0" max="100" step="0.5" value={taxPercentage}
+              onChange={(e) => setTaxPercentage(e.target.value)}
+              className="border border-[var(--color-input-border)] bg-[var(--color-input-fill)] text-[var(--color-foreground)] rounded-lg px-4 py-2 text-sm w-full" />
+          </div>
+          <span className="text-[var(--color-text-secondary)] mt-5">%</span>
+          <button onClick={saveTax} disabled={savingTax}
+            className="bg-[var(--color-primary)] text-white px-6 py-2 rounded-lg text-sm hover:bg-[var(--color-primary-dark)] disabled:opacity-50 mt-5">
+            {savingTax ? '...' : 'حفظ'}
+          </button>
+        </div>
       </div>}
 
       <button onClick={saveProfile} disabled={saving}

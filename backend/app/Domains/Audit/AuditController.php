@@ -11,7 +11,7 @@ class AuditController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::with('user');
+        $query = AuditLog::with('user', 'auditable');
 
         if ($request->filled('action')) {
             $query->where('action', $request->action);

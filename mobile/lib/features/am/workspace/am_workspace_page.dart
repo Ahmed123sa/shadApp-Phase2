@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
-import '../../../core/widgets/shad_logo.dart';
 import 'chat_tab.dart';
 import 'files_tab.dart';
+import 'calendar_tab.dart';
 import 'contracts_tab.dart';
 import 'payments_tab.dart';
 import 'approvals_tab.dart';
 import 'meetings_tab.dart';
-import 'calendar_tab.dart';
-import '../widgets/contract_builder.dart';
 
 class AmWorkspacePage extends StatefulWidget {
   final int? workspaceId;
@@ -25,6 +23,7 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   String? _wsStatus;
   String? _wsContactPerson;
   String? _wsName;
+  String? _clientAvatar;
   late final TabController _tabController;
 
   @override
@@ -47,82 +46,99 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
       final data = await _api.get('/workspaces/$wsId');
       if (!mounted) return;
       final ws = data['workspace'] as Map<String, dynamic>?;
+      final client = ws?['client'] as Map<String, dynamic>?;
       setState(() {
         _wsStatus = ws?['status'] as String?;
-        _wsContactPerson = (ws?['client'] as Map<String, dynamic>?)?['contact_person'] as String?;
-        _wsName = (ws?['client'] as Map<String, dynamic>?)?['company_name'] as String?;
+        _wsContactPerson = client?['contact_person'] as String?;
+        _wsName = client?['company_name'] as String?;
+        _clientAvatar = client?['avatar_url'] as String?;
       });
     } catch (_) {}
   }
 
   @override
   Widget build(BuildContext context) {
+    final isActive = _wsStatus == 'active';
     return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const ShadLogo(size: 24, showText: false),
+      body: Column(children: [
+        // ── Compact Header ──
+        Container(
+          color: const Color(0xFF0D0D0D),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+          child: Row(children: [
+            Stack(clipBehavior: Clip.none, children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: ShadColors.crimson.withAlpha(40),
+                backgroundImage: _clientAvatar != null && _clientAvatar!.isNotEmpty ? NetworkImage(_clientAvatar!) : null,
+                child: _clientAvatar == null || _clientAvatar!.isEmpty
+                    ? Text((_wsContactPerson ?? '?').substring(0, 1), style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.crimson))
+                    : null,
+              ),
+            ]),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(_wsName ?? 'Workspace / مساحة العمل',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, fontFamily: 'PlayfairDisplay')),
-                  if (_wsStatus != null || _wsContactPerson != null)
-                    Text(
-                      [_wsContactPerson, _wsStatus != null ? (_wsStatus == 'active' ? '🟢 نشط' : '🔴 غير نشط') : null]
-                          .whereType<String>()
-                          .join(' · '),
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
-                    ),
-                ],
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(_wsName ?? 'Workspace', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
+                if (_wsContactPerson != null)
+                  Text(_wsContactPerson!, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+              ]),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+              decoration: BoxDecoration(
+                color: isActive ? ShadColors.success.withAlpha(25) : ShadColors.crimson.withAlpha(25),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: isActive ? ShadColors.success.withAlpha(80) : ShadColors.crimson.withAlpha(80)),
               ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Container(width: 6, height: 6, decoration: BoxDecoration(color: isActive ? ShadColors.success : ShadColors.crimson, shape: BoxShape.circle)),
+                const SizedBox(width: 4),
+                Text(isActive ? 'نشط' : 'غير نشط', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? ShadColors.success : ShadColors.crimson)),
+              ]),
             ),
-          ],
+          ]),
         ),
-        actions: [
-          if (_api.role != 'super_admin')
-            IconButton(
-              icon: const Icon(Icons.add_circle_outline),
-              tooltip: 'إنشاء عقد سريع',
-              onPressed: () => ContractBuilder.show(context),
-            ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          indicatorColor: ShadColors.gold,
-          indicatorWeight: 3,
-          labelColor: ShadColors.textPrimary,
-          unselectedLabelColor: ShadColors.textSecondary,
-          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Archivo'),
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          tabs: const [
-            Tab(text: 'المحادثة'),
-            Tab(text: 'الملفات'),
-            Tab(text: 'العقود'),
-            Tab(text: 'المدفوعات'),
-            Tab(text: 'الموافقات'),
-            Tab(text: 'الاجتماعات'),
-            Tab(text: 'التقويم'),
-          ],
+        // ── Tab Bar ──
+        Container(
+          color: const Color(0xFF0D0D0D),
+          child: TabBar(
+            controller: _tabController,
+            isScrollable: false,
+            indicatorColor: ShadColors.gold,
+            indicatorWeight: 2.5,
+            labelColor: ShadColors.textPrimary,
+            unselectedLabelColor: ShadColors.textSecondary,
+            labelStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 11),
+            tabs: const [
+              Tab(text: 'المحادثة'),
+              Tab(text: 'الملفات'),
+              Tab(text: 'العقود'),
+              Tab(text: 'المدفوعات'),
+              Tab(text: 'الموافقات'),
+              Tab(text: 'الاجتماعات'),
+              Tab(text: 'السجل'),
+            ],
+          ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          ChatTab(wsStatus: _wsStatus, workspaceId: widget.workspaceId),
-          FilesTab(workspaceId: widget.workspaceId),
-          ContractsTab(workspaceId: widget.workspaceId),
-          PaymentsTab(onWorkspaceUpdate: _fetchWorkspace, workspaceId: widget.workspaceId),
-          ApprovalsTab(workspaceId: widget.workspaceId),
-          MeetingsTab(workspaceId: widget.workspaceId),
-          CalendarTab(workspaceId: widget.workspaceId),
-        ],
-      ),
+        // ── Tab Content ──
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              ChatTab(wsStatus: _wsStatus, workspaceId: widget.workspaceId),
+              FilesTab(workspaceId: widget.workspaceId),
+              ContractsTab(workspaceId: widget.workspaceId),
+              PaymentsTab(onWorkspaceUpdate: _fetchWorkspace, workspaceId: widget.workspaceId),
+              ApprovalsTab(workspaceId: widget.workspaceId),
+              MeetingsTab(workspaceId: widget.workspaceId),
+              CalendarTab(workspaceId: widget.workspaceId),
+            ],
+          ),
+        ),
+      ]),
     );
   }
+
 }

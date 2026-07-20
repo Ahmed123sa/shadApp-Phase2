@@ -23,7 +23,7 @@ class ClientFactory extends Factory
             'notes' => null,
             'country' => $this->faker->country(),
             'industry' => $this->faker->word(),
-            'client_type' => 'company',
+            'client_type' => 'business',
             'contract_value' => 0,
             'payment_status' => 'pending',
         ];

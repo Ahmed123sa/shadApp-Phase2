@@ -157,11 +157,11 @@ class _MeetingsTabState extends State<MeetingsTab> {
             const Icon(Icons.schedule, size: 14, color: ShadColors.textSecondary),
             const SizedBox(width: 4),
             Text(_formatDate(m['scheduled_at']), style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
-            if (m['duration'] != null) ...[
+            if (m['duration_minutes'] != null) ...[
               const SizedBox(width: 12),
               const Icon(Icons.timer, size: 14, color: ShadColors.textSecondary),
               const SizedBox(width: 4),
-              Text('${m['duration']} دقيقة', style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
+              Text('${m['duration_minutes']} دقيقة', style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
             ],
           ]),
           if (m['notes'] != null) ...[
@@ -292,7 +292,7 @@ class _CreateMeetingFormState extends State<_CreateMeetingForm> {
       await _api.post('/workspaces/${widget.workspaceId ?? _api.workspaceId}/meetings', {
         'title': _titleController.text.trim(),
         'scheduled_at': scheduledAt.toIso8601String(),
-        'duration': _duration,
+        'duration_minutes': _duration,
         'notes': _notesController.text.trim(),
         if (_selectedContractId != null) 'contract_id': _selectedContractId,
       });

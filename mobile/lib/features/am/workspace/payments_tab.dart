@@ -19,6 +19,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
   final _api = ApiClient();
   List<dynamic> _payments = [];
   List<dynamic> _contracts = [];
+  Map<String, dynamic>? _taxSummary;
   bool _loading = true;
   String? _error;
 
@@ -38,6 +39,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
         _api.get('/workspaces/$wsId/contracts'),
       ]);
       _payments = (results[0]['payments'] as List<dynamic>?) ?? [];
+      _taxSummary = results[0]['tax_summary'] as Map<String, dynamic>?;
       final rawContracts = results[1]['contracts'];
       _contracts = rawContracts is List ? rawContracts : (rawContracts is Map ? (rawContracts['data'] ?? []) as List : []);
     } catch (_) {
@@ -59,6 +61,9 @@ class _PaymentsTabState extends State<PaymentsTab> {
   }
 
   double get _grandTotal {
+    if (_taxSummary != null) {
+      return (_taxSummary!['grand_total'] as num?)?.toDouble() ?? 0;
+    }
     final contracts = _payableContracts;
     if (contracts.isNotEmpty) {
       return contracts.fold<double>(0, (sum, c) => sum + (num.tryParse(c['value']?.toString() ?? '')?.toDouble() ?? 0));
@@ -163,6 +168,31 @@ class _PaymentsTabState extends State<PaymentsTab> {
                     valueColor: AlwaysStoppedAnimation(isFullyPaid ? ShadColors.success : ShadColors.gold),
                   ),
                 ),
+                if (_taxSummary != null && (_taxSummary!['tax_percentage'] ?? 0) > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(color: Colors.white.withAlpha(8), borderRadius: BorderRadius.circular(8)),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('تفاصيل الضريبة', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ShadColors.gold)),
+                      const SizedBox(height: 6),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text('قيمة العقود', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                        Text('${(_taxSummary!['contracts_total'] ?? 0).toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                      ]),
+                      const SizedBox(height: 2),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        Text('ضريبة ${(_taxSummary!['tax_percentage'] ?? 0)}%', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                        Text('${(_taxSummary!['tax_amount'] ?? 0).toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: ShadColors.gold)),
+                      ]),
+                      const Divider(height: 10, color: ShadColors.cardBorder),
+                      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                        const Text('الإجمالي', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                        Text('${(_taxSummary!['grand_total'] ?? 0).toStringAsFixed(2)} $contractCur', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: ShadColors.gold)),
+                      ]),
+                    ]),
+                  ),
+                ],
               ]),
             );
           }

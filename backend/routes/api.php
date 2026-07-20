@@ -15,6 +15,7 @@ use App\Domains\Audit\AuditController;
 use App\Domains\Notification\NotificationController;
 use App\Domains\SubUser\SubUserController;
 use App\Domains\Dashboard\DashboardController;
+use App\Domains\Settings\SettingsController;
 use Illuminate\Support\Facades\Route;
 // Public auth routes
 Route::post('/auth/register', [AuthController::class, 'registerSuperAdmin'])->middleware('throttle:5,1');
@@ -145,4 +146,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Notifications
     Route::post('/notifications/send-fcm', [NotificationController::class, 'sendFcm']);
+
+    // System Settings (SA only — controller checks isSuperAdmin)
+    Route::get('/settings', [SettingsController::class, 'index']);
+    Route::put('/settings', [SettingsController::class, 'update']);
+    Route::get('/settings/tax-summary/{workspace}', [SettingsController::class, 'getTaxSummary']);
 });

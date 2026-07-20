@@ -18,6 +18,8 @@ class ContractFactory extends Factory
             'status' => 'draft',
             'value' => 10000,
             'currency' => 'SAR',
+            'start_date' => $this->faker->dateTimeBetween('-10 days', '+10 days'),
+            'end_date' => $this->faker->dateTimeBetween('+30 days', '+120 days'),
         ];
     }
 
