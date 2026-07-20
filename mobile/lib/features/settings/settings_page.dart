@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../core/api_client.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/client_type_badge.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -17,6 +18,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _loading = true;
   bool _saving = false;
   String? _avatarUrl;
+  String? _clientType;
 
   @override
   void initState() {
@@ -38,6 +40,7 @@ class _SettingsPageState extends State<SettingsPage> {
       final client = data['client'] as Map<String, dynamic>? ?? {};
       _nameController.text = (client['contact_person'] as String? ?? '');
       _avatarUrl = client['avatar_url'] as String?;
+      _clientType = client['client_type'] as String?;
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
   }
@@ -105,6 +108,8 @@ class _SettingsPageState extends State<SettingsPage> {
               label: const Text('تغيير الصورة الشخصية'),
             ),
           ),
+          const SizedBox(height: 8),
+          Center(child: ClientTypeBadge(clientType: _clientType)),
           const SizedBox(height: 24),
           TextField(
             controller: _nameController,

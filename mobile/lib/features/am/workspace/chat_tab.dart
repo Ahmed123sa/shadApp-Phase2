@@ -8,6 +8,7 @@ import '../../../core/reverb_service.dart';
 import '../../../core/theme.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import '../../../core/widgets/chat_contract_card.dart';
+import '../../../core/widgets/client_type_badge.dart';
 import '../../../core/widgets/meeting_chip.dart';
 
 class ChatTab extends StatefulWidget {
@@ -530,7 +531,11 @@ class _ChatTabState extends State<ChatTab> {
           ),
           const SizedBox(width: 10),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(clientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+            Row(children: [
+              Flexible(child: Text(clientName, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary))),
+              const SizedBox(width: 6),
+              ClientTypeBadge(clientType: _workspaceData?['client']?['client_type'] as String?, compact: true),
+            ]),
             const SizedBox(height: 1),
             Text(clientOnline ? 'متصل الآن' : 'غير متصل',
               style: TextStyle(fontSize: 10, color: clientOnline ? ShadColors.online : ShadColors.textDisabled)),

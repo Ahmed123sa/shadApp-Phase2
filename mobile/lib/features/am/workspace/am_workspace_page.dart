@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/client_type_badge.dart';
 import 'chat_tab.dart';
 import 'files_tab.dart';
 import 'calendar_tab.dart';
@@ -24,6 +25,7 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
   String? _wsContactPerson;
   String? _wsName;
   String? _clientAvatar;
+  String? _clientType;
   late final TabController _tabController;
 
   @override
@@ -52,6 +54,7 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
         _wsContactPerson = client?['contact_person'] as String?;
         _wsName = client?['company_name'] as String?;
         _clientAvatar = client?['avatar_url'] as String?;
+        _clientType = client?['client_type'] as String?;
       });
     } catch (_) {}
   }
@@ -79,7 +82,11 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
             const SizedBox(width: 8),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_wsName ?? 'Workspace', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay')),
+                Row(children: [
+                  Flexible(child: Text(_wsName ?? 'Workspace', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, fontFamily: 'PlayfairDisplay'))),
+                  const SizedBox(width: 6),
+                  ClientTypeBadge(clientType: _clientType, compact: true),
+                ]),
                 if (_wsContactPerson != null)
                   Text(_wsContactPerson!, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
               ]),
@@ -96,6 +103,16 @@ class _AmWorkspacePageState extends State<AmWorkspacePage> with SingleTickerProv
                 const SizedBox(width: 4),
                 Text(isActive ? 'نشط' : 'غير نشط', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: isActive ? ShadColors.success : ShadColors.crimson)),
               ]),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              behavior: HitTestBehavior.opaque,
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(color: ShadColors.card, borderRadius: BorderRadius.circular(8), border: Border.all(color: ShadColors.cardBorder)),
+                child: const Icon(Icons.keyboard_arrow_left, size: 20, color: ShadColors.textSecondary),
+              ),
             ),
           ]),
         ),

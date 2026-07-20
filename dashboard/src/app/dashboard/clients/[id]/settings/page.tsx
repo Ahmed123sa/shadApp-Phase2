@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
+import { ClientTypeBadge } from '@/components/ui/ClientTypeBadge';
 import PasswordField from '@/components/ui/PasswordField';
 
 const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
@@ -98,6 +99,7 @@ export default function ClientSettingsPage() {
       <div className="flex items-center gap-3">
         <button onClick={() => router.back()} className="text-[var(--color-text-secondary)] hover:text-[var(--color-foreground)]">&larr; رجوع</button>
         <h1 className="text-xl font-bold">تعديل: {client.company_name}</h1>
+        <ClientTypeBadge clientType={client.client_type} />
       </div>
 
       {success && (

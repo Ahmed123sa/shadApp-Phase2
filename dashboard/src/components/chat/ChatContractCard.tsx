@@ -6,7 +6,7 @@ type Contract = {
   status: string; clauses: Clause[];
 };
 
-export default function ChatContractCard({ contract, onAction }: { contract: Contract; onAction?: (id: number, action: string) => void }) {
+export default function ChatContractCard({ contract, clientType, onAction }: { contract: Contract; clientType?: string; onAction?: (id: number, action: string) => void }) {
   const statusBadge = (s: string) => {
     const m: Record<string, string> = {
       draft: 'bg-zinc-700/30 text-zinc-400', sent: 'bg-blue-900/30 text-blue-400',
@@ -31,6 +31,7 @@ export default function ChatContractCard({ contract, onAction }: { contract: Con
       <div className="p-4 space-y-2">
         <h4 className="font-bold text-[var(--color-foreground)]">{contract.title}</h4>
         {contract.value && <p className="text-sm text-[var(--color-text-secondary)]">{contract.value} SAR</p>}
+        {clientType === 'business' && <p className="text-xs text-[var(--color-text-disabled)]">قيمة العقد غير شاملة الضريبة</p>}
         {(contract.start_date || contract.end_date) && (
           <p className="text-xs text-[var(--color-text-disabled)]">
             {contract.start_date && contract.end_date

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/client_type_badge.dart';
 import '../../../core/widgets/password_field.dart';
 
 class ClientDetailPage extends StatefulWidget {
@@ -28,6 +29,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
   bool _saving = false;
   String? _avatarUrl;
   String? _status;
+  String? _clientType;
   String? _createdAt;
   List<dynamic> _subUsers = [];
 
@@ -62,6 +64,7 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
       _dateOfBirthController.text = (client['date_of_birth'] as String? ?? '');
       _emailCtrl.text = (client['email'] as String? ?? '');
       _status = client['status'] as String? ?? 'inactive';
+      _clientType = client['client_type'] as String?;
       _avatarUrl = client['avatar_url'] as String?;
       _createdAt = client['created_at'] as String?;
       _subUsers = client['sub_users'] as List<dynamic>? ?? [];
@@ -205,7 +208,13 @@ class _ClientDetailPageState extends State<ClientDetailPage> {
             ),
           ),
           const SizedBox(height: 8),
-          Center(child: Text(_nameCtrl.text, style: const TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 17, fontWeight: FontWeight.w700, color: ShadColors.textPrimary))),
+          Center(
+            child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Text(_nameCtrl.text, style: const TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 17, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+              const SizedBox(width: 8),
+              ClientTypeBadge(clientType: _clientType),
+            ]),
+          ),
           const SizedBox(height: 2),
           Center(child: Text(_emailCtrl.text, style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary), textDirection: TextDirection.ltr)),
           const SizedBox(height: 6),

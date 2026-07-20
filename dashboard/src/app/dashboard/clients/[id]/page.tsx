@@ -10,6 +10,7 @@ import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ClientTypeBadge } from '@/components/ui/ClientTypeBadge';
 import ChatTab from '@/components/chat/ChatTab';
 import FilesTab from '@/components/files/FilesTab';
 import ContractsTab from '@/components/contracts/ContractsTab';
@@ -74,7 +75,10 @@ export default function ClientWorkspace() {
               )}
             </div>
             <div>
-              <h2 className="text-xl font-bold">{client.company_name}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold">{client.company_name}</h2>
+                <ClientTypeBadge clientType={client.client_type} />
+              </div>
               <p className="text-sm text-[var(--color-text-secondary)]">{client.contact_person} • {client.email}{client.country ? ` • ${client.country}` : ''}{client.industry ? ` • ${client.industry}` : ''}</p>
             </div>
           </div>
@@ -121,9 +125,9 @@ export default function ClientWorkspace() {
 function TabContent({ tab, wsId, client, onClientRefresh }: { tab: Tab; wsId: number; client: Client; onClientRefresh?: () => void }) {
   const wsActive = client.workspace?.status === 'active';
   switch (tab) {
-    case 'المحادثة': return <ChatTab wsId={wsId} wsActive={wsActive} />;
+    case 'المحادثة': return <ChatTab wsId={wsId} wsActive={wsActive} clientType={client.client_type} />;
     case 'الملفات': return <FilesTab wsId={wsId} />;
-    case 'العقود': return <ContractsTab wsId={wsId} />;
+    case 'العقود': return <ContractsTab wsId={wsId} clientType={client.client_type} />;
     case 'المدفوعات': return <PaymentsTab wsId={wsId} client={client} onWorkspaceUpdate={onClientRefresh} />;
     case 'الموافقات': return <ApprovalsTab wsId={wsId} />;
     case 'الاجتماعات': return <MeetingsTab wsId={wsId} />;

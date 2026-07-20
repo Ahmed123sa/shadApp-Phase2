@@ -9,10 +9,12 @@ import Link from 'next/link';
 import DashboardStatCard from '@/components/dashboard/DashboardStatCard';
 import ActivityFeed, { ActivityItem } from '@/components/dashboard/ActivityFeed';
 import ManagerTableRow from '@/components/dashboard/ManagerTableRow';
+import { ClientTypeBadge } from '@/components/ui/ClientTypeBadge';
 
 type Client = {
   id: number; company_name: string; contact_person: string; email: string;
   status: string; contract_value: string; payment_status: string; signed_at: string | null;
+  client_type?: string;
   avatar_url?: string | null;
   workspace: { id: number; status: string } | null;
   latest_contract?: { id: number; status: string; value: string } | null;
@@ -249,7 +251,10 @@ function AMView({ t, locale, clients, allContracts, allPayments, allMeetings, un
                         )}
                         <div>
                           <div className="text-[11.5px] font-bold">{c.company_name}</div>
-                          <div className="text-[9.5px] text-[var(--color-text-secondary)]">{c.contact_person}</div>
+                          <div className="text-[9.5px] text-[var(--color-text-secondary)] flex items-center gap-1.5">
+                            {c.contact_person}
+                            <ClientTypeBadge clientType={c.client_type} compact />
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -382,7 +387,10 @@ function SAManagersView({ t, locale, managers, allContracts, allPayments, allMee
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-[11.5px] font-bold truncate">{c.company_name}</div>
-                          <div className="text-[9.5px] text-[var(--color-text-secondary)]">{c.contact_person}</div>
+                          <div className="text-[9.5px] text-[var(--color-text-secondary)] flex items-center gap-1.5">
+                            {c.contact_person}
+                            <ClientTypeBadge clientType={c.client_type} compact />
+                          </div>
                         </div>
                         <StatusBadge status={c.workspace?.status || c.status} />
                       </Link>

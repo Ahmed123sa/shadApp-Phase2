@@ -11,7 +11,11 @@ class SettingsController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $settings = SystemSetting::all()->keyBy('key');
+        try {
+            $settings = SystemSetting::all()->keyBy('key');
+        } catch (\Exception $e) {
+            $settings = collect();
+        }
         return response()->json(['settings' => $settings]);
     }
 
@@ -43,7 +47,12 @@ class SettingsController extends Controller
             ->whereIn('status', ['client_approved', 'company_approved', 'completed'])
             ->sum('value');
 
-        $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+        $taxPercentage = 0;
+        try {
+            $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+        } catch (\Exception $e) {
+            $taxPercentage = 0;
+        }
         $isBusiness = $workspace->client && $workspace->client->client_type === 'business';
 
         $taxAmount = $isBusiness ? ($contractsTotal * $taxPercentage / 100) : 0;

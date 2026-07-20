@@ -27,6 +27,7 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
 
   Map<String, dynamic>? _client;
   Map<String, dynamic>? _workspace;
+  Map<String, dynamic>? _taxSettings;
   bool _loading = true;
   String? _error;
   int _lastStage = 0;
@@ -112,9 +113,15 @@ class _ClientOnboardingScreenState extends State<ClientOnboardingScreen> with Wi
     final cid = _api.userId;
     if (cid == null) return;
     try {
-      final data = await _api.get('/clients/$cid');
+      final results = await Future.wait<Map<String, dynamic>>([
+        _api.get('/clients/$cid'),
+        _api.get('/settings').catchError((_) => <String, dynamic>{}),
+      ]);
+      final data = results[0];
       _client = data['client'] as Map<String, dynamic>?;
       _workspace = data['client']?['workspace'] as Map<String, dynamic>?;
+      final settingsData = results[1];
+      _taxSettings = settingsData['settings'] as Map<String, dynamic>?;
       if (_workspace != null) {
         final wsId = _workspace!['id'] as int?;
         if (wsId != null && wsId != _api.workspaceId) {
@@ -586,14 +593,21 @@ Text(
     final ws = _workspace;
     double totalAmount = 0;
     double paidAmount = 0;
+    double taxAmount = 0;
+    double taxPercentage = 0;
     String currency = 'SAR';
     String? startDate;
     String? endDate;
+    final isBusiness = (_client?['client_type'] ?? '') == 'business';
+    if (isBusiness && _taxSettings != null) {
+      taxPercentage = num.tryParse(_taxSettings!['corporate_tax_percentage']?['value']?.toString() ?? '')?.toDouble() ?? 0;
+    }
     if (ws != null) {
       final contracts = safeList(ws['contracts']);
       for (final c in contracts) {
         if (c is Map) {
-          totalAmount += double.tryParse((c['value'] ?? '0').toString()) ?? 0.0;
+          final cv = double.tryParse((c['value'] ?? '0').toString()) ?? 0.0;
+          totalAmount += cv;
           currency = (c['currency'] as String?) ?? currency;
           if (c['start_date'] != null) startDate = (c['start_date'] as String).split('T')[0];
           if (c['end_date'] != null) endDate = (c['end_date'] as String).split('T')[0];
@@ -606,8 +620,12 @@ Text(
         }
       }
     }
-    final remaining = totalAmount - paidAmount;
-    final progress = totalAmount > 0 ? (paidAmount / totalAmount).clamp(0.0, 1.0) : 0.0;
+    if (isBusiness && taxPercentage > 0) {
+      taxAmount = totalAmount * taxPercentage / 100;
+    }
+    final grandTotal = totalAmount + taxAmount;
+    final remaining = grandTotal - paidAmount;
+    final progress = grandTotal > 0 ? (paidAmount / grandTotal).clamp(0.0, 1.0) : 0.0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -646,7 +664,11 @@ Text(
             child: Column(children: [
               Text('${paidAmount.toStringAsFixed(2)} $currency', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
               const SizedBox(height: 4),
-              Text('من أصل $totalAmount $currency — متبقي ${remaining.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+              Text('من أصل ${grandTotal.toStringAsFixed(2)} $currency — متبقي ${remaining.toStringAsFixed(2)}', style: TextStyle(fontSize: 11, color: ShadColors.textDisabled)),
+              if (taxAmount > 0) ...[
+                const SizedBox(height: 4),
+                Text('القيمة: ${totalAmount.toStringAsFixed(2)} + ضريبة $taxPercentage% = ${taxAmount.toStringAsFixed(2)}', style: TextStyle(fontSize: 10, color: ShadColors.textDisabled)),
+              ],
               const SizedBox(height: 14),
               ClipRRect(
                 borderRadius: BorderRadius.circular(4),
@@ -695,9 +717,16 @@ Text(
 
           // Payment info cards
           Row(children: [
-            Expanded(child: _paymentInfoTile('المبلغ', '$totalAmount', ShadColors.gold)),
+            Expanded(child: _paymentInfoTile('المبلغ', totalAmount.toStringAsFixed(0), ShadColors.gold)),
             const SizedBox(width: 12),
             Expanded(child: _paymentInfoTile('العملة', currency, ShadColors.textPrimary)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            if (taxAmount > 0)
+              Expanded(child: _paymentInfoTile('الضريبة', taxAmount.toStringAsFixed(0), ShadColors.error)),
+            if (taxAmount > 0) const SizedBox(width: 12),
+            Expanded(child: _paymentInfoTile('الإجمالي', grandTotal.toStringAsFixed(0), ShadColors.gold)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
@@ -711,7 +740,7 @@ Text(
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () => _showPaymentBottomSheet(remaining > 0 ? remaining : totalAmount, ws?['id']),
+              onPressed: () => _showPaymentBottomSheet(remaining > 0 ? remaining : grandTotal, ws?['id']),
               icon: const Icon(Icons.add_circle_outline, size: 20),
               label: const Text('إرسال دفعة'),
               style: ElevatedButton.styleFrom(

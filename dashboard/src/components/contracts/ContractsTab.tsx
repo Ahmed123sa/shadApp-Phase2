@@ -8,7 +8,7 @@ import ContractStatusStepper from '@/components/ui/ContractStatusStepper';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-export default function ContractsTab({ wsId }: { wsId: number }) {
+export default function ContractsTab({ wsId, clientType }: { wsId: number; clientType?: string }) {
   const [contracts, setContracts] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -171,6 +171,7 @@ export default function ContractsTab({ wsId }: { wsId: number }) {
           <div className="flex justify-between items-start">
             <div><h4 className="font-medium">{c.title}</h4>
               {c.value ? <p className="text-xs text-[var(--color-text-secondary)]">{c.value} ر.س{c.start_date ? ` • من ${c.start_date}` : ''}{c.end_date ? ` إلى ${c.end_date}` : ''}</p> : ''}
+              {clientType === 'business' && <p className="text-xs text-[var(--color-text-disabled)]">قيمة العقد غير شاملة الضريبة المضافة</p>}
               {c.required_documents?.length > 0 && <p className="text-xs text-amber-600 mt-0.5">📎 {c.required_documents.length} مستند مطلوب</p>}
             </div>
             <div className="flex items-center gap-2">

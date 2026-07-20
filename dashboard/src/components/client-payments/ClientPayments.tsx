@@ -10,6 +10,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
   const [methods, setMethods] = useState<string[]>([]);
   const [payableContract, setPayableContract] = useState<any>(null);
   const [payableContracts, setPayableContracts] = useState<any[]>([]);
+  const [taxSummary, setTaxSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [amount, setAmount] = useState('');
@@ -29,6 +30,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         const payData = payRes.data;
         setPayments(payData.payments || []);
         setMethods(payData.available_methods || []);
+        setTaxSummary(payData.tax_summary || null);
 
         const contracts = contRes.data.contracts?.data ?? contRes.data.contracts ?? [];
         const payableList = contracts.filter((c: any) =>
@@ -37,7 +39,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
         if (payableList.length > 0) {
           setPayableContract(payableList[0]);
           setPayableContracts(payableList);
-          if (!payData.payments?.length) setAmount(String(payableList[0].value));
+          if (!payData.payments?.length) setAmount(String(taxSummary?.grand_total ?? payableList[0].value));
         }
       } catch (e) {
         console.error(e);
@@ -104,7 +106,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
 
   const approvedPayments = payments.filter(p => p.status === 'approved');
   const totalPaid = approvedPayments.reduce((s, p) => s + Number(p.amount), 0);
-  const grandTotal = payableContracts.length > 0 ? payableContracts.reduce((s, c) => s + Number(c.value), 0) : payments.reduce((s, p) => s + Number(p.amount), 0);
+  const grandTotal = taxSummary?.grand_total != null ? Number(taxSummary.grand_total) : (payableContracts.length > 0 ? payableContracts.reduce((s, c) => s + Number(c.value), 0) : payments.reduce((s, p) => s + Number(p.amount), 0));
   const contractCurrency = payableContract?.currency || 'SAR';
   const remaining = grandTotal - totalPaid;
   const isFullyPaid = totalPaid >= grandTotal && grandTotal > 0;
@@ -136,6 +138,11 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
             <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
               من أصل {grandTotal.toFixed(2)} {contractCurrency} — متبقي {remaining.toFixed(2)}
             </p>
+            {taxSummary && taxSummary.tax_percentage > 0 && (
+              <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
+                القيمة: {Number(taxSummary.contracts_total).toFixed(2)} + ضريبة {taxSummary.tax_percentage}% = {Number(taxSummary.tax_amount).toFixed(2)} {contractCurrency}
+              </p>
+            )}
           </>
         )}
         <div className="mt-3">
@@ -163,7 +170,7 @@ export default function ClientPayments({ wsId }: { wsId: number }) {
       {!pendingPayment && payableContract && (
         <div className="bg-[var(--color-card)] border border-[var(--color-gold)]/30 rounded-xl p-4">
           <p className="text-sm text-[var(--color-gold)] font-medium">
-            💳 عقد "{payableContract.title}" معتمد — المبلغ: {payableContract.value} ر.س
+            💳 عقد "{payableContract.title}" معتمد — المبلغ: {payableContract.value} ر.س{taxSummary && taxSummary.tax_percentage > 0 ? ` + ${taxSummary.tax_percentage}% ضريبة` : ''}
           </p>
         </div>
       )}

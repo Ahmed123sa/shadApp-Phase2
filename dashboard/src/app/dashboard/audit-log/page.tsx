@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
+import { ClientTypeBadge } from '@/components/ui/ClientTypeBadge';
 
 const ACTION_LABELS: Record<string, string> = {
   'contract.created': 'إنشاء عقد',
@@ -60,6 +61,19 @@ function resolveClientName(log: any): string {
   }
   if (type.includes('Workspace')) return auditable.client?.company_name || '—';
   return '—';
+}
+
+function resolveClientType(log: any): string | null {
+  const auditable = log.auditable;
+  if (!auditable) return null;
+
+  const type = log.auditable_type || '';
+  if (type.includes('Client')) return auditable.client_type || null;
+  if (type.includes('Contract') || type.includes('Payment') || type.includes('Meeting') || type.includes('Approval') || type.includes('FileEntry')) {
+    return auditable.workspace?.client?.client_type || null;
+  }
+  if (type.includes('Workspace')) return auditable.client?.client_type || null;
+  return null;
 }
 
 function formatDateTime(dateStr: string): string {
@@ -168,7 +182,10 @@ export default function AuditLogPage() {
                     </td>
                     {isSA && (
                       <td className="p-3 text-xs text-[var(--color-text-secondary)]">
-                        {resolveClientName(log)}
+                        <span className="flex items-center gap-1.5">
+                          {resolveClientName(log)}
+                          <ClientTypeBadge clientType={resolveClientType(log)} compact />
+                        </span>
                       </td>
                     )}
                   </tr>

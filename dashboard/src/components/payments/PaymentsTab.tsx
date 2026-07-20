@@ -19,6 +19,7 @@ function resolveFileUrl(url: string | string[]): string {
 export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId: number; client: Client; onWorkspaceUpdate?: (ws: any) => void }) {
   const [payments, setPayments] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
+  const [taxSummary, setTaxSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const user = getUser();
   const canReview = user?.role === 'super_admin';
@@ -30,6 +31,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
         api.get(`/workspaces/${wsId}/contracts`),
       ]).then(([payRes, contRes]) => {
         setPayments(payRes.data.payments?.data || payRes.data.payments || []);
+        setTaxSummary(payRes.data.tax_summary || null);
         const raw = contRes.data.contracts;
         setContracts(Array.isArray(raw) ? raw : (raw?.data || []));
       }).catch(() => {});
@@ -58,7 +60,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
   const contractValue = payableContracts.reduce((s, c) => s + Number(c.value), 0);
   const contractCurrency = payableContracts.length > 0 ? (payableContracts[0]?.currency || 'SAR') : 'SAR';
   const totalPaid = payments.filter(p => p.status === 'approved').reduce((s, p) => s + Number(p.amount), 0);
-  const grandTotal = contractValue > 0 ? contractValue : payments.reduce((s, p) => s + Number(p.amount), 0);
+  const grandTotal = taxSummary?.grand_total != null ? Number(taxSummary.grand_total) : (contractValue > 0 ? contractValue : payments.reduce((s, p) => s + Number(p.amount), 0));
   const remaining = grandTotal - totalPaid;
   const isFullyPaid = grandTotal > 0 && totalPaid >= grandTotal;
   const progress = grandTotal > 0 ? Math.min(totalPaid / grandTotal, 1) : 0;
@@ -89,6 +91,11 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
             <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
               من أصل {grandTotal.toFixed(2)} {contractCurrency} — متبقي {remaining.toFixed(2)}
             </p>
+            {taxSummary && taxSummary.tax_percentage > 0 && (
+              <p className="text-xs text-[var(--color-text-disabled)] mt-0.5">
+                القيمة: {Number(taxSummary.contracts_total).toFixed(2)} + ضريبة {taxSummary.tax_percentage}% = {Number(taxSummary.tax_amount).toFixed(2)} {contractCurrency}
+              </p>
+            )}
           </>
         )}
         <div className="mt-3">

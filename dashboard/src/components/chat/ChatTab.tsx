@@ -16,7 +16,7 @@ function resolveFileUrl(url: string): string {
   return `${FILE_BASE}/storage/${url.replace(/^\/?storage\//, '')}`;
 }
 
-export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: boolean }) {
+export default function ChatTab({ wsId, wsActive, clientType }: { wsId: number; wsActive?: boolean; clientType?: string }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -93,7 +93,7 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
         </p>
         <div className="h-72 overflow-y-auto space-y-3 border border-[var(--color-card-border)] rounded-lg p-3 bg-[var(--color-card-border)]">
           {contracts.length > 0 && contracts.map((c) => (
-            <ChatContractCard key={`contract-${c.id}`} contract={c} onAction={() => {}} />
+            <ChatContractCard key={`contract-${c.id}`} contract={c} clientType={clientType} onAction={() => {}} />
           ))}
           {messages.map((m) => {
             const isClient = m.sender_type === 'App\\Models\\Client';
@@ -151,7 +151,7 @@ export default function ChatTab({ wsId, wsActive }: { wsId: number; wsActive?: b
 
       <div className="h-72 overflow-y-auto space-y-3 border border-[var(--color-card-border)] rounded-lg p-3 bg-[var(--color-card-border)]">
         {contracts.length > 0 && contracts.map((c) => (
-          <ChatContractCard key={`contract-${c.id}`} contract={c} onAction={doContractAction} />
+          <ChatContractCard key={`contract-${c.id}`} contract={c} clientType={clientType} onAction={doContractAction} />
         ))}
         {messages.length === 0 && contracts.length === 0 ? <EmptyState message="لا توجد رسائل بعد" /> : null}
         {messages.map((m) => {

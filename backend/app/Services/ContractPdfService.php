@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Contract;
+use App\Models\SystemSetting;
 use Mpdf\Mpdf;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,6 +22,18 @@ class ContractPdfService
         }
 
         $requiredDocs = $contract->requiredDocuments()->get();
+
+        $taxPercentage = 0;
+        $taxAmount = 0;
+        if ($client->client_type === 'business' && $contract->value > 0) {
+            try {
+                $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+            } catch (\Exception $e) {
+                $taxPercentage = 0;
+            }
+            $taxAmount = (float) $contract->value * $taxPercentage / 100;
+        }
+
         $html = view('pdf.contract', [
             'contract' => $contract,
             'client' => $client,
@@ -32,6 +45,8 @@ class ContractPdfService
                 ? ($contract->company_signature_data ?? ($contract->creator?->name ?? 'تم الاعتماد'))
                 : null,
             'requiredDocuments' => $requiredDocs,
+            'taxPercentage' => $taxPercentage,
+            'taxAmount' => $taxAmount,
         ])->render();
 
         $mpdf = new Mpdf([

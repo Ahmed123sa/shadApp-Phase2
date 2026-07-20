@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import ContractDetailModal from './ContractDetailModal';
 
-export default function ClientContracts({ wsId, onGoToPayments }: { wsId: number; onGoToPayments?: () => void }) {
+export default function ClientContracts({ wsId, clientType, onGoToPayments }: { wsId: number; clientType?: string; onGoToPayments?: () => void }) {
   const [contracts, setContracts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -92,6 +92,7 @@ export default function ClientContracts({ wsId, onGoToPayments }: { wsId: number
         <ContractDetailModal
           contract={viewContract}
           wsId={wsId}
+          clientType={clientType}
           onClose={() => setViewContract(null)}
           onAction={(action) => setConfirmAction({ id: viewContract.id, action })}
           onUpload={load}

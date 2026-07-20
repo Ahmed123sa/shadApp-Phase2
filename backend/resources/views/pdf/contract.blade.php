@@ -29,6 +29,10 @@
         <p><strong>مدير الحساب:</strong> {{ $manager->name ?? '' }}</p>
         @if($contract->value > 0)
         <p><strong>قيمة العقد:</strong> {{ number_format($contract->value, 2) }} ر.س</p>
+        @if($taxPercentage > 0)
+        <p><strong>الضريبة المضافة ({{ $taxPercentage }}%):</strong> {{ number_format($taxAmount, 2) }} ر.س</p>
+        <p><strong>الإجمالي شامل الضريبة:</strong> {{ number_format($contract->value + $taxAmount, 2) }} ر.س</p>
+        @endif
         @endif
         @if($contract->start_date)
         <p><strong>مدة العقد:</strong> من {{ $contract->start_date }} @if($contract->end_date) إلى {{ $contract->end_date }} @endif</p>

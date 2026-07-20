@@ -5,6 +5,7 @@ import api from '@/lib/api';
 import { getUser } from '@/lib/auth';
 import Link from 'next/link';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ClientTypeBadge } from '@/components/ui/ClientTypeBadge';
 import PasswordField from '@/components/ui/PasswordField';
 
 export default function ClientsPage() {
@@ -120,6 +121,7 @@ export default function ClientsPage() {
           <thead className="bg-[var(--color-card-border)] border-b border-[var(--color-card-border)]">
             <tr>
               <th className="text-right p-4 font-medium">Company</th>
+              <th className="text-right p-4 font-medium">Type</th>
               <th className="text-right p-4 font-medium">Contact Person</th>
               <th className="text-right p-4 font-medium">Status</th>
               <th className="text-right p-4 font-medium">Workspace</th>
@@ -132,6 +134,7 @@ export default function ClientsPage() {
                 <td className="p-4">
                   <Link href={`/dashboard/clients/${client.id}`} className="text-[var(--color-gold)] hover:underline font-medium">{client.company_name}</Link>
                 </td>
+                <td className="p-4"><ClientTypeBadge clientType={client.client_type} /></td>
                 <td className="p-4 text-[var(--color-text-secondary)]">{client.contact_person}</td>
                 <td className="p-4">
                   <span className={`px-2 py-1 rounded-full text-xs ${client.status === 'active' ? 'bg-green-900/30 text-green-400' : 'bg-zinc-700/30 text-zinc-400'}`}>{client.status}</span>

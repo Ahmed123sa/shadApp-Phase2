@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/api_client.dart';
 import '../../../core/theme.dart';
+import '../../../core/widgets/client_type_badge.dart';
 
 class SaClientsPage extends StatefulWidget {
   const SaClientsPage({super.key});
@@ -147,7 +148,11 @@ class _SaClientsPageState extends State<SaClientsPage> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+                Row(children: [
+                  Flexible(child: Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
+                  const SizedBox(width: 6),
+                  ClientTypeBadge(clientType: client['client_type'] as String?, compact: true),
+                ]),
                 const SizedBox(height: 2),
                 Text(person, style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
               ]),

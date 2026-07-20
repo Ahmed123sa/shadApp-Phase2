@@ -5,12 +5,13 @@ import api from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import ContractStatusStepper from '@/components/ui/ContractStatusStepper';
 
-export default function ContractDetailModal({ contract, wsId, onClose, onAction, onUpload }: {
+export default function ContractDetailModal({ contract, wsId, onClose, onAction, onUpload, clientType }: {
   contract: any;
   wsId: number;
   onClose: () => void;
   onAction: (action: string) => void;
   onUpload: () => void;
+  clientType?: string;
 }) {
   const canAct = contract.status === 'sent';
   const [uploading, setUploading] = useState<Record<number, boolean>>({});
@@ -50,6 +51,9 @@ export default function ContractDetailModal({ contract, wsId, onClose, onAction,
 
         {contract.value > 0 && (
           <p className="text-sm text-[var(--color-text-secondary)] mb-1">القيمة: <span className="font-medium">{contract.value} ر.س</span></p>
+        )}
+        {clientType === 'business' && contract.value > 0 && (
+          <p className="text-xs text-[var(--color-text-disabled)] mb-1">قيمة العقد غير شاملة الضريبة المضافة</p>
         )}
         {contract.start_date && (
           <p className="text-sm text-[var(--color-text-secondary)] mb-1">من: {contract.start_date}{contract.end_date ? ` إلى ${contract.end_date}` : ''}</p>

@@ -207,7 +207,7 @@ export default function ClientDashboardPage() {
 
 function TabContent({ tab, wsId, clientId, clientData, wsActive, onGoToPayments }: { tab: Tab; wsId: number; clientId: number; clientData: any; wsActive?: boolean; onGoToPayments?: () => void }) {
   switch (tab) {
-    case 'العقود': return <ClientContracts wsId={wsId} onGoToPayments={onGoToPayments} />;
+    case 'العقود': return <ClientContracts wsId={wsId} clientType={clientData?.client_type} onGoToPayments={onGoToPayments} />;
     case 'المدفوعات': return <ClientPayments wsId={wsId} />;
     case 'الموافقات': return <ClientApprovals wsId={wsId} clientId={clientId} />;
     case 'الشات': return <ClientChat wsId={wsId} wsActive={wsActive} />;

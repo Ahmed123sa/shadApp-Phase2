@@ -8,6 +8,7 @@ import 'status_badge.dart';
 class ChatContractCard extends StatefulWidget {
   final Map<String, dynamic> contract;
   final bool isClient;
+  final String? clientType;
   final VoidCallback onViewClauses;
   final VoidCallback? onApprove;
   final VoidCallback? onGoToPayments;
@@ -16,6 +17,7 @@ class ChatContractCard extends StatefulWidget {
     super.key,
     required this.contract,
     required this.isClient,
+    this.clientType,
     required this.onViewClauses,
     this.onApprove,
     this.onGoToPayments,
@@ -73,6 +75,8 @@ class _ChatContractCardState extends State<ChatContractCard> {
                     const SizedBox(height: 2),
                     Text('${c['value'] ?? 0} SAR • ${clauses.length} بند',
                       style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
+                    if (widget.clientType == 'business')
+                      const Text('قيمة العقد غير شاملة الضريبة', style: TextStyle(fontSize: 9, color: ShadColors.textDisabled)),
                   ],
                 ),
               ),

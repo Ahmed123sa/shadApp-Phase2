@@ -71,8 +71,13 @@ class PaymentController extends Controller
             ->whereIn('status', ['client_approved', 'company_approved', 'completed'])
             ->sum('value');
 
-        $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+        $taxPercentage = 0;
         $isBusiness = $client->client_type === 'business';
+        try {
+            $taxPercentage = (float) SystemSetting::getValue('corporate_tax_percentage', 0);
+        } catch (\Exception $e) {
+            $taxPercentage = 0;
+        }
         $taxAmount = $isBusiness ? ($contractsTotal * $taxPercentage / 100) : 0;
 
         return response()->json([

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme.dart';
+import 'client_type_badge.dart';
 import 'status_badge.dart';
 
 class ClientCard extends StatelessWidget {
@@ -7,6 +8,7 @@ class ClientCard extends StatelessWidget {
   final String contactPerson;
   final String? workspaceStatus;
   final String? contractStatus;
+  final String? clientType;
   final VoidCallback? onTap;
 
   const ClientCard({
@@ -15,6 +17,7 @@ class ClientCard extends StatelessWidget {
     required this.contactPerson,
     this.workspaceStatus,
     this.contractStatus,
+    this.clientType,
     this.onTap,
   });
 
@@ -38,7 +41,13 @@ class ClientCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(companyName, style: ShadTypography.cardTitle),
+                    Row(children: [
+                      Flexible(child: Text(companyName, style: ShadTypography.cardTitle)),
+                      if (clientType != null) ...[
+                        const SizedBox(width: 6),
+                        ClientTypeBadge(clientType: clientType, compact: true),
+                      ],
+                    ]),
                     const SizedBox(height: 4),
                     Text(contactPerson, style: ShadTypography.cardBody.copyWith(color: ShadColors.textSecondary)),
                   ],

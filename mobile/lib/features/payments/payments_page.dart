@@ -23,6 +23,7 @@ class _PaymentsPageState extends State<PaymentsPage> {
   List<dynamic> _payments = [];
   List<dynamic> _contracts = [];
   List<String> _availableMethods = [];
+  Map<String, dynamic>? _taxSummary;
   bool _loading = true;
   String? _error;
   String _filter = 'all';
@@ -63,6 +64,9 @@ class _PaymentsPageState extends State<PaymentsPage> {
   }
 
   double get _grandTotal {
+    if (_taxSummary != null && _taxSummary!['grand_total'] != null) {
+      return num.tryParse(_taxSummary!['grand_total'].toString())?.toDouble() ?? 0;
+    }
     final contracts = _payableContracts;
     if (contracts.isNotEmpty) {
       return contracts.fold<double>(0, (sum, c) => sum + (num.tryParse(c['value']?.toString() ?? '')?.toDouble() ?? 0));
@@ -90,16 +94,17 @@ class _PaymentsPageState extends State<PaymentsPage> {
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final results = await Future.wait<Map<String, dynamic>>([
-        _api.get('/workspaces/$wsId/payments'),
-        _api.get('/workspaces/$wsId/contracts'),
-      ]);
-      final paymentsData = results[0];
-      final contractsData = results[1];
+      final paymentsData = await _api.get('/workspaces/$wsId/payments');
       _payments = safeList(paymentsData['payments']);
       _availableMethods = (paymentsData['available_methods'] as List<dynamic>?)?.cast<String>() ?? [];
-      final rawContracts = contractsData['contracts'];
-      _contracts = rawContracts is List ? rawContracts : (rawContracts is Map ? (rawContracts['data'] ?? []) as List : []);
+      _taxSummary = paymentsData['tax_summary'] as Map<String, dynamic>?;
+      try {
+        final contractsData = await _api.get('/workspaces/$wsId/contracts');
+        final rawContracts = contractsData['contracts'];
+        _contracts = rawContracts is List ? rawContracts : (rawContracts is Map ? (rawContracts['data'] ?? []) as List : []);
+      } catch (_) {
+        _contracts = [];
+      }
     } catch (_) {
       _error = 'فشل تحميل المدفوعات';
     }
@@ -159,6 +164,11 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   const SizedBox(height: 4),
                   Text('من أصل ${grandTotal.toStringAsFixed(2)} $contractCur — متبقي ${(grandTotal - _totalPaid).toStringAsFixed(2)}',
                     style: TextStyle(fontSize: 11, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
+                  if (_taxSummary != null && (_taxSummary!['tax_percentage'] ?? 0) > 0) ...[
+                    const SizedBox(height: 4),
+                    Text('القيمة: ${(_taxSummary!['contracts_total'] ?? 0)} $contractCur + ضريبة ${_taxSummary!['tax_percentage']}% = ${(_taxSummary!['tax_amount'] ?? 0)} $contractCur',
+                      style: TextStyle(fontSize: 10, color: ShadColors.textDisabled, fontFamily: 'NotoSansArabic')),
+                  ],
                 ],
                 const SizedBox(height: 12),
                 ClipRRect(

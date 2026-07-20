@@ -6,6 +6,7 @@ import '../../../core/theme.dart';
 import '../../../core/locale_provider.dart';
 import '../../../core/reverb_service.dart';
 import '../../../core/widgets/shad_logo.dart';
+import '../../../core/widgets/client_type_badge.dart';
 import 'package:shadapp_client/generated/app_localizations.dart';
 import 'sa_approvals_page.dart';
 import 'sa_clients_page.dart';
@@ -945,7 +946,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo')),
+                  Row(children: [
+                    Flexible(child: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'Archivo'))),
+                    const SizedBox(width: 6),
+                    ClientTypeBadge(clientType: client['client_type'] as String?, compact: true),
+                  ]),
                   const SizedBox(height: 2),
                   Text(person, style: TextStyle(fontSize: 11, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
                 ]),
@@ -1148,7 +1153,11 @@ class _ManagerClientsSheet extends StatelessWidget {
                     backgroundColor: ShadColors.cardBorder,
                     child: Text((c['company_name'] as String? ?? '')[0].toUpperCase(), style: const TextStyle(color: ShadColors.textSecondary)),
                   ),
-                  title: Text(c['company_name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                  title: Row(children: [
+                    Flexible(child: Text(c['company_name'] ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+                    const SizedBox(width: 6),
+                    ClientTypeBadge(clientType: c['client_type'] as String?, compact: true),
+                  ]),
                   subtitle: Text(c['contact_person'] ?? '', style: const TextStyle(fontSize: 12, color: ShadColors.textSecondary)),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),

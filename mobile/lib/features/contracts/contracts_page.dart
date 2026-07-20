@@ -22,6 +22,7 @@ class ContractsPage extends StatefulWidget {
 class _ContractsPageState extends State<ContractsPage> {
   final _api = ApiClient();
   List<dynamic> _contracts = [];
+  String? _clientType;
   bool _loading = true;
   String? _error;
   VoidCallback? _refreshListener;
@@ -41,8 +42,12 @@ class _ContractsPageState extends State<ContractsPage> {
     if (wsId == null) return;
     setState(() { _loading = true; _error = null; });
     try {
-      final data = await _api.get('/workspaces/$wsId/contracts');
-      _contracts = safeList(data['contracts']);
+      final results = await Future.wait<Map<String, dynamic>>([
+        _api.get('/workspaces/$wsId/contracts'),
+        _api.get('/workspaces/$wsId').catchError((_) => <String, dynamic>{}),
+      ]);
+      _contracts = safeList(results[0]['contracts']);
+      _clientType = results[1]['client']?['client_type'] as String?;
     } catch (e) {
       if (mounted) setState(() { _error = e.toString(); _loading = false; });
     }
@@ -208,6 +213,11 @@ class _ContractsPageState extends State<ContractsPage> {
           Row(children: [
             Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
           ]),
+          if (_clientType == 'business')
+            const Padding(
+              padding: EdgeInsets.only(top: 2),
+              child: Text('قيمة العقد غير شاملة الضريبة المضافة', style: TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
+            ),
           if (c['start_date'] != null) ...[
             const SizedBox(height: 4),
             Text((c['start_date'] as String).split('T')[0], style: const TextStyle(fontSize: 10, color: ShadColors.textSecondary)),
@@ -319,7 +329,7 @@ class _ContractsPageState extends State<ContractsPage> {
     );
   }
 
-  void _showDetailModal(dynamic c) { showModalBottomSheet(context: context, isScrollControlled: true, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))), builder: (_) => _ContractDetailModal(contract: c, onAction: _clientAction, onRefresh: _load, onGoToPayments: widget.onGoToPayments)); }
+  void _showDetailModal(dynamic c) { showModalBottomSheet(context: context, isScrollControlled: true, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))), builder: (_) => _ContractDetailModal(contract: c, clientType: _clientType, onAction: _clientAction, onRefresh: _load, onGoToPayments: widget.onGoToPayments)); }
 
   Future<void> _downloadPdf(String pdfUrl) async {
     final url = _api.resolveFileUrl(pdfUrl);
@@ -342,11 +352,13 @@ class _ContractsPageState extends State<ContractsPage> {
 
 class _ContractDetailModal extends StatefulWidget {
   final dynamic contract;
+  final String? clientType;
   final Future<void> Function(int, String) onAction;
   final VoidCallback onRefresh;   final VoidCallback? onGoToPayments;
 
   const _ContractDetailModal({
     required this.contract,
+    this.clientType,
     required this.onAction,
     required this.onRefresh,     required this.onGoToPayments,
   });
@@ -489,6 +501,11 @@ class _ContractDetailModalState extends State<_ContractDetailModal> {
                 Text('#${c['id'] ?? ''}', style: const TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
                 const SizedBox(height: 12),
                 Text('${c['value'] ?? 0} ${c['currency'] as String? ?? 'SAR'}', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'PlayfairDisplay')),
+                if (widget.clientType == 'business')
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2),
+                    child: Text('قيمة العقد غير شاملة الضريبة المضافة', style: TextStyle(fontSize: 11, color: ShadColors.textSecondary)),
+                  ),
                 const SizedBox(height: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(6),
