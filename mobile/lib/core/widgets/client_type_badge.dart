@@ -13,7 +13,7 @@ class ClientTypeBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (clientType == null || clientType!.isEmpty) return const SizedBox.shrink();
 
-    final label = _isBusiness ? 'شركة' : 'فريدي';
+    final label = _isBusiness ? 'شركة' : 'فردي';
     final bg = _isBusiness
         ? ShadColors.gold.withAlpha(38)
         : ShadColors.textDisabled.withAlpha(38);

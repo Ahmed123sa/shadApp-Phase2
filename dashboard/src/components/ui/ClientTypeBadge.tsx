@@ -9,7 +9,7 @@ export function ClientTypeBadge({ clientType, compact = false }: ClientTypeBadge
   if (!clientType) return null;
 
   const isBusiness = clientType === 'business';
-  const label = isBusiness ? 'شركة' : 'فريدي';
+  const label = isBusiness ? 'شركة' : 'فردي';
 
   return (
     <span
