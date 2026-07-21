@@ -115,6 +115,34 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
     if (mounted) setState(() => _uploading = false);
   }
 
+  Future<void> _deleteFile(dynamic file) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('حذف الملف'),
+        content: Text('هل تريد حذف "${file['name'] ?? ''}"؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error, foregroundColor: Colors.white),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    final wsId = _api.workspaceId;
+    if (wsId == null) return;
+    try {
+      await _api.delete('/workspaces/$wsId/files/${file['id']}');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم حذف الملف')));
+      _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل حذف الملف: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const LoadingState();
@@ -220,6 +248,14 @@ class _ClientFilesPageState extends State<ClientFilesPage> {
                         child: Text('سبب الرفض: ${f['rejection_reason']}', style: const TextStyle(fontSize: 11, color: ShadColors.error)),
                       ),
                   ])),
+                  if (status != 'approved')
+                    GestureDetector(
+                      onTap: () => _deleteFile(f),
+                      child: const Padding(
+                        padding: EdgeInsets.only(left: 4),
+                        child: Icon(Icons.close, size: 18, color: ShadColors.error),
+                      ),
+                    ),
                 ]),
               ),
             );

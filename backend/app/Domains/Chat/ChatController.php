@@ -97,7 +97,7 @@ class ChatController extends Controller
                 'name' => $fileName,
                 'type' => $fileType,
                 'size' => $fileSize,
-                'status' => 'pending',
+                'status' => $senderType === \App\Models\Client::class ? 'pending' : 'approved',
             ]);
         }
 

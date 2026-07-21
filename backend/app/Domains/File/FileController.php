@@ -100,7 +100,7 @@ class FileController extends Controller
             'name' => $request->name ?? $request->file('file')->getClientOriginalName(),
             'type' => $request->file('file')->getMimeType(),
             'size' => $request->file('file')->getSize(),
-            'status' => 'pending',
+            'status' => $request->user() instanceof \App\Models\Client ? 'pending' : 'approved',
         ]);
 
         $auditData = [
