@@ -10,10 +10,13 @@ const ACTION_LABELS: Record<string, string> = {
   'contract.sent': 'إرسال عقد',
   'contract.client_approved': 'موافقة العميل على العقد',
   'contract.client_rejected': 'رفض العميل للعقد',
+  'contract.client_edit_requested': 'طلب تعديل العقد',
   'contract.edit_requested': 'طلب تعديل العقد',
   'contract.company_approved': 'اعتماد الشركة للعقد',
   'contract.completed': 'إكمال العقد',
   'contract.archived': 'أرشفة العقد',
+  'contract.updated': 'تحديث العقد',
+  'contract.deleted': 'حذف عقد',
   'workspace.created': 'إنشاء مساحة عمل',
   'workspace.activated': 'تفعيل مساحة العمل',
   'payment.submitted': 'تقديم دفعة',
@@ -28,8 +31,11 @@ const ACTION_LABELS: Record<string, string> = {
   'file.rejected': 'رفض الملف',
   'login': 'تسجيل دخول',
   'meeting.created': 'إنشاء اجتماع',
+  'meeting.updated': 'تحديث اجتماع',
   'client.created': 'إنشاء عميل',
   'client.deleted': 'حذف عميل',
+  'chat.responded.approved': 'الموافقة من الشات',
+  'chat.responded.edit_requested': 'طلب تعديل من الشات',
 };
 
 const ACTION_BADGE_COLORS: Record<string, string> = {
@@ -51,11 +57,14 @@ function getActionBadgeColor(action: string): string {
 }
 
 function resolveClientName(log: any): string {
+  if (log.client?.company_name) return log.client.company_name;
+  if (log.client?.name) return log.client.name;
+
   const auditable = log.auditable;
   if (!auditable) return '—';
 
   const type = log.auditable_type || '';
-  if (type.includes('Client')) return auditable.company_name || '—';
+  if (type.includes('Client')) return auditable.company_name || auditable.name || '—';
   if (type.includes('Contract') || type.includes('Payment') || type.includes('Meeting') || type.includes('Approval') || type.includes('FileEntry')) {
     return auditable.workspace?.client?.company_name || '—';
   }
@@ -64,6 +73,8 @@ function resolveClientName(log: any): string {
 }
 
 function resolveClientType(log: any): string | null {
+  if (log.client?.client_type) return log.client.client_type;
+
   const auditable = log.auditable;
   if (!auditable) return null;
 
@@ -158,7 +169,7 @@ export default function AuditLogPage() {
                   <th className="text-right p-3 font-medium text-xs">التاريخ</th>
                   <th className="text-right p-3 font-medium text-xs">المستخدم</th>
                   <th className="text-right p-3 font-medium text-xs">الحدث</th>
-                  {isSA && <th className="text-right p-3 font-medium text-xs">العميل</th>}
+                  <th className="text-right p-3 font-medium text-xs">العميل</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,14 +191,12 @@ export default function AuditLogPage() {
                         {ACTION_LABELS[log.action] || log.action}
                       </span>
                     </td>
-                    {isSA && (
-                      <td className="p-3 text-xs text-[var(--color-text-secondary)]">
-                        <span className="flex items-center gap-1.5">
-                          {resolveClientName(log)}
-                          <ClientTypeBadge clientType={resolveClientType(log)} compact />
-                        </span>
-                      </td>
-                    )}
+                    <td className="p-3 text-xs text-[var(--color-text-secondary)]">
+                      <span className="flex items-center gap-1.5">
+                        {resolveClientName(log)}
+                        <ClientTypeBadge clientType={resolveClientType(log)} compact />
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

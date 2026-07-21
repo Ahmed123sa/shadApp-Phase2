@@ -11,7 +11,7 @@ class AuditLog extends Model
     use HasFactory;
 
     protected $fillable = [
-        'auditable_type', 'auditable_id', 'user_id',
+        'auditable_type', 'auditable_id', 'user_id', 'client_id',
         'action', 'metadata', 'ip_address',
     ];
 
@@ -28,5 +28,10 @@ class AuditLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(Client::class);
     }
 }

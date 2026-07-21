@@ -188,6 +188,7 @@ class ContractController extends Controller
         AuditLog::create([
             'auditable_type' => Contract::class,
             'auditable_id' => $contract->id,
+            'client_id' => $request->user()->id,
             'action' => 'contract.client_' . $request->action,
             'ip_address' => $request->ip(),
         ]);

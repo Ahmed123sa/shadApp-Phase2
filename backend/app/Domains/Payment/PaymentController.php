@@ -134,6 +134,7 @@ class PaymentController extends Controller
         AuditLog::create([
             'auditable_type' => Payment::class,
             'auditable_id' => $payment->id,
+            'client_id' => $workspace->client_id,
             'action' => 'payment.submitted',
             'ip_address' => $request->ip(),
         ]);

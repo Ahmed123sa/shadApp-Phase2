@@ -163,13 +163,14 @@ class ApprovalController extends Controller
 
         ApprovalResponded::dispatch($approval);
 
-        AuditLog::create([
+        AuditLog::create(array_filter([
             'auditable_type' => Approval::class,
             'auditable_id' => $approval->id,
+            'client_id' => $user instanceof \App\Models\Client ? $user->id : null,
             'action' => 'approval.' . $request->action,
             'metadata' => ['reference_no' => $approval->reference_no],
             'ip_address' => $request->ip(),
-        ]);
+        ]));
 
         return response()->json(['approval' => $approval->fresh()->load('certificate', 'files', 'chatMessage', 'requester')]);
     }

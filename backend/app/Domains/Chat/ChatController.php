@@ -190,12 +190,13 @@ class ChatController extends Controller
             }
         }
 
-        AuditLog::create([
+        AuditLog::create(array_filter([
             'auditable_type' => ChatMessage::class,
             'auditable_id' => $chatMessage->id,
+            'client_id' => $user instanceof \App\Models\Client ? $user->id : null,
             'action' => 'chat.responded.' . $request->action,
             'ip_address' => $request->ip(),
-        ]);
+        ]));
 
         return response()->json(['message' => $chatMessage->fresh()->load('approval.certificate')]);
     }

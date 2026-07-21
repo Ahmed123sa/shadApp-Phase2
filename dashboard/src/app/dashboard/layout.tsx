@@ -64,6 +64,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     {
       label: t('nav_group_system'),
       items: [
+        { href: '/dashboard/audit-log', label: t('audit_log'), icon: '📋' },
         { href: '/dashboard/settings', label: t('settings'), icon: '⚙' },
       ],
     },

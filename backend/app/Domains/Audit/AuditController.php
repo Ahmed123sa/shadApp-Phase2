@@ -11,7 +11,7 @@ class AuditController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = AuditLog::with('user', 'auditable');
+        $query = AuditLog::with('user', 'client', 'auditable');
 
         if ($request->filled('action')) {
             $query->where('action', $request->action);
@@ -19,6 +19,10 @@ class AuditController extends Controller
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);
+        }
+
+        if ($request->filled('client_id')) {
+            $query->where('client_id', $request->client_id);
         }
 
         if ($request->filled('date_from')) {
@@ -34,6 +38,7 @@ class AuditController extends Controller
             $clientIds = $user->managedClients()->pluck('id');
             $query->where(function ($q) use ($user, $clientIds) {
                 $q->where('user_id', $user->id)
+                  ->orWhereIn('client_id', $clientIds)
                   ->orWhereIn('auditable_id', $clientIds);
             });
         }

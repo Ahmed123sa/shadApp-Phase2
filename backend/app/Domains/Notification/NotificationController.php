@@ -99,6 +99,9 @@ class NotificationController extends Controller
 
             $allNotifications = $allNotifications->filter(function ($n) use ($workspaceIds) {
                 $data = $n->data ?? [];
+                if (isset($data['workspace_id'])) {
+                    return in_array($data['workspace_id'], $workspaceIds);
+                }
                 if (isset($data['contract_id'])) {
                     $contract = Contract::find($data['contract_id']);
                     return $contract && in_array($contract->workspace_id, $workspaceIds);
@@ -111,7 +114,7 @@ class NotificationController extends Controller
                     $approval = Approval::find($data['approval_id']);
                     return $approval && in_array($approval->workspace_id, $workspaceIds);
                 }
-                return true;
+                return false;
             })->values();
         }
 
@@ -122,14 +125,14 @@ class NotificationController extends Controller
             $unreadNotifications = $allNotifications->whereNull('read_at');
             foreach ($unreadNotifications as $n) {
                 $data = $n->data ?? [];
-                $workspaceId = null;
-                if (isset($data['contract_id'])) {
+                $workspaceId = $data['workspace_id'] ?? null;
+                if (!$workspaceId && isset($data['contract_id'])) {
                     $contract = Contract::find($data['contract_id']);
                     $workspaceId = $contract?->workspace_id;
-                } elseif (isset($data['payment_id'])) {
+                } elseif (!$workspaceId && isset($data['payment_id'])) {
                     $payment = Payment::find($data['payment_id']);
                     $workspaceId = $payment?->workspace_id;
-                } elseif (isset($data['approval_id'])) {
+                } elseif (!$workspaceId && isset($data['approval_id'])) {
                     $approval = Approval::find($data['approval_id']);
                     $workspaceId = $approval?->workspace_id;
                 }
