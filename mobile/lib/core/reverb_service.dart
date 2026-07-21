@@ -22,6 +22,7 @@ class ReverbService {
   String? _socketId;
   DateTime _lastNotifTime = DateTime.now().subtract(const Duration(seconds: 1));
   void Function(Map<String, dynamic>)? onMessageReceived;
+  void Function(Map<String, dynamic>)? onMessageUpdated;
   void Function()? onContractStatusChanged;
   void Function(Map<String, dynamic>)? onNotificationReceived;
 
@@ -98,6 +99,9 @@ class ReverbService {
           } else if (event == 'message.sent') {
             final payload = jsonDecode(msg['data'] as String) as Map<String, dynamic>;
             onMessageReceived?.call(payload);
+          } else if (event == 'message.updated') {
+            final payload = jsonDecode(msg['data'] as String) as Map<String, dynamic>;
+            onMessageUpdated?.call(payload);
           } else if (event == 'contract.status_changed') {
             onContractStatusChanged?.call();
           } else if (event == 'Illuminate\\Notifications\\Events\\BroadcastNotificationCreated') {

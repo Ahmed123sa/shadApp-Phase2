@@ -30,6 +30,7 @@ class _ChatTabState extends State<ChatTab> {
   Map<String, dynamic>? _workspaceData;
   Map<String, dynamic>? _nextMeeting;
   bool _requestApproval = false;
+  Map<String, dynamic>? _editingMessage;
   int? get _wsId => widget.workspaceId ?? _api.workspaceId;
 
   @override
@@ -47,6 +48,15 @@ class _ChatTabState extends State<ChatTab> {
         if (msg != null && mounted) {
           setState(() => _messages.add(msg));
           WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        }
+      };
+      reverb.onMessageUpdated = (payload) {
+        final msg = payload['message'] as Map<String, dynamic>?;
+        if (msg != null && mounted) {
+          setState(() {
+            final idx = _messages.indexWhere((m) => m['id'] == msg['id']);
+            if (idx >= 0) _messages[idx] = msg;
+          });
         }
       };
       reverb.onContractStatusChanged = () {
@@ -136,6 +146,23 @@ class _ChatTabState extends State<ChatTab> {
     }
   }
 
+  Future<void> _saveEdit() async {
+    if (_editingMessage == null) return;
+    final text = _controller.text.trim();
+    if (text.isEmpty) return;
+    try {
+      await _api.put('/chat/${_editingMessage!['id']}', {'message': text});
+      setState(() {
+        _editingMessage = null;
+        _controller.clear();
+      });
+      _load();
+    } catch (e) {
+      debugPrint('[chat_tab] _saveEdit error: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('فشل التعديل: $e')));
+    }
+  }
+
   Future<void> _requireAction(int msgId) async {
     if (_wsId == null) return;
     try {
@@ -150,11 +177,27 @@ class _ChatTabState extends State<ChatTab> {
   void _showMessageActions(dynamic m) {
     final isSA = _api.role == 'super_admin';
     if (isSA || m['sender_type'] == 'App\\Models\\Client') return;
+    final canEdit = m['sender_type'] == 'App\\Models\\User'
+        && m['sender_id'].toString() == _api.userId.toString()
+        && m['type'] == 'text' && m['approval_id'] == null;
     final alreadyRequested = m['requires_action'] == true;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
+          if (canEdit)
+            ListTile(
+              leading: const Icon(Icons.edit, size: 18),
+              title: const Text('تعديل'),
+              dense: true,
+              onTap: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  _editingMessage = m;
+                  _controller.text = m['message'] ?? '';
+                });
+              },
+            ),
           if (!alreadyRequested)
             ListTile(
               leading: const Icon(Icons.how_to_reg, color: ShadColors.primary),
@@ -295,6 +338,10 @@ class _ChatTabState extends State<ChatTab> {
                   children: [
                     Text(_formatTime(m['created_at'] as String?),
                       style: const TextStyle(fontSize: 9, color: ShadColors.textMuted)),
+                    if (m['edited_at'] != null) ...[
+                      const SizedBox(width: 3),
+                      Text('(تم التعديل)', style: TextStyle(fontSize: 9, color: ShadColors.textMuted)),
+                    ],
                     if (m['id'] != null) ...[
                       const SizedBox(width: 3),
                       Text(m['read_at'] != null ? '✓✓' : '✓',
@@ -623,6 +670,20 @@ class _ChatTabState extends State<ChatTab> {
                 ]),
               ),
             ),
+            if (_editingMessage != null)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                child: Row(children: [
+                  const Icon(Icons.edit, size: 14, color: ShadColors.gold),
+                  const SizedBox(width: 6),
+                  const Text('تعديل الرسالة', style: TextStyle(fontSize: 12, color: ShadColors.gold)),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => setState(() { _editingMessage = null; _controller.clear(); }),
+                    child: const Icon(Icons.close, size: 16, color: ShadColors.textSecondary),
+                  ),
+                ]),
+              ),
             Padding(
               padding: const EdgeInsets.fromLTRB(13, 0, 13, 9),
               child: Row(children: [
@@ -635,7 +696,7 @@ class _ChatTabState extends State<ChatTab> {
                   ),
                   child: IconButton(
                     icon: const Icon(Icons.attach_file, size: 14),
-                    onPressed: _sendWithAttachment,
+                    onPressed: _editingMessage != null ? null : _sendWithAttachment,
                     color: ShadColors.textSecondary,
                     padding: EdgeInsets.zero,
                   ),
@@ -646,7 +707,7 @@ class _ChatTabState extends State<ChatTab> {
                     controller: _controller,
                     style: const TextStyle(fontSize: 12, color: ShadColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: AppLocalizations.of(context)!.typeMessage,
+                      hintText: _editingMessage != null ? 'عدّل رسالتك...' : AppLocalizations.of(context)!.typeMessage,
                       hintStyle: const TextStyle(fontSize: 12, color: ShadColors.textDim),
                       filled: true,
                       fillColor: ShadColors.chatInputFill,
@@ -664,19 +725,22 @@ class _ChatTabState extends State<ChatTab> {
                         borderSide: const BorderSide(color: ShadColors.gold, width: 1),
                       ),
                     ),
-                    onSubmitted: (_) => _send(),
+                    onSubmitted: (_) => _editingMessage != null ? _saveEdit() : _send(),
                   ),
                 ),
                 const SizedBox(width: 7),
                 Container(
                   width: 32, height: 32,
-                  decoration: const BoxDecoration(
-                    color: ShadColors.crimson,
+                  decoration: BoxDecoration(
+                    color: _editingMessage != null ? ShadColors.gold : ShadColors.crimson,
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.send_rounded, color: Colors.white, size: 14),
-                    onPressed: _send,
+                    icon: Icon(
+                      _editingMessage != null ? Icons.check : Icons.send_rounded,
+                      color: Colors.white, size: 14,
+                    ),
+                    onPressed: _editingMessage != null ? _saveEdit : _send,
                     padding: EdgeInsets.zero,
                   ),
                 ),

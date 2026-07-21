@@ -213,4 +213,40 @@ class ChatController extends Controller
 
         return response()->json(['message' => 'done']);
     }
+
+    public function update(Request $request, ChatMessage $chatMessage): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($chatMessage->sender_type !== get_class($user) || $chatMessage->sender_id !== $user->id) {
+            abort(403, 'غير مصرح لك بتعديل هذه الرسالة');
+        }
+
+        if ($chatMessage->approval_id || $chatMessage->type !== 'text') {
+            abort(422, 'لا يمكن تعديل هذه الرسالة');
+        }
+
+        $request->validate(['message' => 'required|string|max:5000']);
+
+        $chatMessage->update([
+            'message' => $request->message,
+            'edited_at' => now(),
+        ]);
+
+        try {
+            broadcast(new \App\Events\MessageUpdated($chatMessage))->toOthers();
+        } catch (\Exception $e) {
+            Log::warning('Chat edit broadcast failed (non-critical): ' . $e->getMessage());
+        }
+
+        AuditLog::create(array_filter([
+            'auditable_type' => ChatMessage::class,
+            'auditable_id' => $chatMessage->id,
+            'client_id' => $user instanceof \App\Models\Client ? $user->id : null,
+            'action' => 'chat.message_edited',
+            'ip_address' => $request->ip(),
+        ]));
+
+        return response()->json(['message' => $chatMessage->fresh()->load('sender')]);
+    }
 }

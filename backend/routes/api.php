@@ -27,6 +27,7 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
     Route::get('/workspaces/{workspace}/chat', [ChatController::class, 'index']);
     Route::post('/workspaces/{workspace}/chat', [ChatController::class, 'store']);
     Route::post('/workspaces/{workspace}/chat/mark-read', [ChatController::class, 'markAsRead']);
+    Route::put('/chat/{chatMessage}', [ChatController::class, 'update']);
     Route::patch('/chat/{chatMessage}/require-action', [ChatController::class, 'toggleRequireAction']);
     Route::post('/chat/{chatMessage}/respond', [ChatController::class, 'respond']);
 
