@@ -92,6 +92,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Colors.blue;
       case 'payment_created':
       case 'payment_reviewed':
+      case 'payment_scheduled':
+      case 'payment_reminder':
         return Colors.green;
       case 'approval_requested':
       case 'approval_responded':
@@ -115,6 +117,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.payment;
       case 'payment_reviewed':
         return Icons.rate_review;
+      case 'payment_scheduled':
+        return Icons.schedule;
+      case 'payment_reminder':
+        return Icons.notifications_active;
       case 'approval_requested':
         return Icons.approval;
       case 'approval_responded':

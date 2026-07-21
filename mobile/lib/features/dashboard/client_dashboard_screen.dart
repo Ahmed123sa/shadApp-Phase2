@@ -127,7 +127,7 @@ class _ClientDashboardScreenState extends State<ClientDashboardScreen> with Widg
     };
     _fcmSubscription = FirebaseMessaging.onMessage.listen((msg) {
       final type = msg.data['type'] as String? ?? '';
-      if (type == 'contract.company_approved' || type == 'contract.completed' || type == 'payment.approved') {
+      if (type == 'contract.company_approved' || type == 'contract.completed' || type == 'payment.approved' || type == 'payment_scheduled' || type == 'payment_reminder') {
         _loadClientData();
       }
     });
