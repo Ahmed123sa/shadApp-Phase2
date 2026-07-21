@@ -236,6 +236,7 @@ class PaymentController extends Controller
         $request->validate([
             'installments' => 'required|array|min:1',
             'installments.*.amount' => 'required|numeric|min:0',
+            'installments.*.currency' => 'nullable|string|max:10',
             'installments.*.due_date' => 'required|date|after_or_equal:today',
             'installments.*.installment_label' => 'nullable|string|max:100',
             'installments.*.notes' => 'nullable|string|max:500',
@@ -246,7 +247,7 @@ class PaymentController extends Controller
             $payment = $workspace->payments()->create([
                 'client_id' => $workspace->client_id,
                 'amount' => $inst['amount'],
-                'currency' => 'SAR',
+                'currency' => $inst['currency'] ?? 'SAR',
                 'due_date' => $inst['due_date'],
                 'installment_label' => $inst['installment_label'] ?? $this->arabicOrdinal($i + 1),
                 'requested_by_manager' => true,

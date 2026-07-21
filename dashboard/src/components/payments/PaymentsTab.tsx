@@ -7,7 +7,7 @@ import type { Client } from '@/types';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
-type ScheduleForm = { amount: string; due_date: string; installment_label: string };
+type ScheduleForm = { amount: string; currency: string; due_date: string; installment_label: string };
 
 const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
 function resolveFileUrl(url: string | string[]): string {
@@ -24,7 +24,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
   const [taxSummary, setTaxSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showSchedule, setShowSchedule] = useState(false);
-  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>({ amount: '', due_date: '', installment_label: '' });
+  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>({ amount: '', currency: 'SAR', due_date: '', installment_label: '' });
   const [installments, setInstallments] = useState<ScheduleForm[]>([]);
   const user = getUser();
   const canReview = user?.role === 'super_admin';
@@ -63,7 +63,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
   const addInstallment = () => {
     if (!scheduleForm.amount || !scheduleForm.due_date) return;
     setInstallments((prev) => [...prev, { ...scheduleForm, installment_label: scheduleForm.installment_label || `القسط ${prev.length + 1}` }]);
-    setScheduleForm({ amount: '', due_date: '', installment_label: '' });
+    setScheduleForm({ amount: '', currency: 'SAR', due_date: '', installment_label: '' });
   };
 
   const removeInstallment = (idx: number) => setInstallments((prev) => prev.filter((_, i) => i !== idx));
@@ -76,7 +76,9 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
       setInstallments([]);
       const { data: payRes } = await api.get(`/workspaces/${wsId}/payments`);
       setPayments(payRes.payments?.data || payRes.payments || []);
-    } catch { }
+    } catch (e: any) {
+      alert('فشل جدولة الدفعات: ' + (e?.response?.data?.message || e?.message || 'خطأ غير معروف'));
+    }
   };
 
   const deleteSchedule = async (pid: number) => {
@@ -139,11 +141,9 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
       </div>
 
       <p className="text-xs text-[var(--color-text-disabled)]">نسبة العميل: {client?.client_type === 'individual' ? 'فردي' : 'شركة'}</p>
-      {isSA && (
-        <button onClick={() => setShowSchedule(true)} className="px-4 py-2 bg-[var(--color-gold)] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
-          جدولة دفعات
-        </button>
-      )}
+      <button onClick={() => setShowSchedule(true)} className="px-4 py-2 bg-[var(--color-gold)] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+        جدولة دفعات
+      </button>
       {payments.length === 0 ? <EmptyState message="لا توجد مدفوعات" /> : null}
       {payments.map((p, idx) => {
         const isPending = p.status === 'pending';
@@ -202,7 +202,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
                   <button onClick={() => reviewPayment(p.id, 'approved')} className="w-full text-sm bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 font-medium">اعتماد</button>
                 </div>
               )}
-              {isManagerScheduled && (isScheduled || isOverdue) && isSA && (
+              {isManagerScheduled && (isScheduled || isOverdue) && (
                 <div className="pt-2 flex gap-2">
                   <button onClick={() => deleteSchedule(p.id)} className="flex-1 text-sm bg-red-600/20 text-red-400 py-2 rounded-lg hover:bg-red-600/30 font-medium">مسح</button>
                 </div>
@@ -228,6 +228,12 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
                 <input type="text" value={scheduleForm.installment_label} onChange={(e) => setScheduleForm({ ...scheduleForm, installment_label: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]" placeholder="مثال: القسط الأول" />
               </div>
               <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">العملة</label>
+                <select value={scheduleForm.currency} onChange={(e) => setScheduleForm({ ...scheduleForm, currency: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]">
+                  {['SAR', 'USD', 'EUR', 'AED', 'EGP', 'KWD', 'QAR', 'BHD', 'OMR'].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
                 <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">تاريخ الاستحقاق *</label>
                 <input type="date" value={scheduleForm.due_date} onChange={(e) => setScheduleForm({ ...scheduleForm, due_date: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]" />
               </div>
@@ -238,7 +244,7 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
                     <div key={i} className="flex items-center justify-between bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2">
                       <div>
                         <p className="text-xs text-[var(--color-text-primary)]">{inst.installment_label}</p>
-                        <p className="text-[10px] text-[var(--color-text-secondary)]">{inst.amount} SAR — {inst.due_date}</p>
+                        <p className="text-[10px] text-[var(--color-text-secondary)]">{inst.amount} {inst.currency} — {inst.due_date}</p>
                       </div>
                       <button onClick={() => removeInstallment(i)} className="text-red-400 hover:text-red-300 text-xs">مسح</button>
                     </div>

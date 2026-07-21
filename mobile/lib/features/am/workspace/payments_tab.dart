@@ -350,6 +350,14 @@ class _PaymentsTabState extends State<PaymentsTab> {
     final amountCtrl = TextEditingController();
     final labelCtrl = TextEditingController();
     DateTime selectedDate = DateTime.now().add(const Duration(days: 30));
+    String selectedCurrency = 'SAR';
+
+    const currencies = ['SAR', 'USD', 'EUR', 'AED', 'EGP', 'KWD', 'QAR', 'BHD', 'OMR'];
+    const currencyLabels = {
+      'SAR': 'ريال سعودي', 'USD': 'دولار أمريكي', 'EUR': 'يورو',
+      'AED': 'درهم إماراتي', 'EGP': 'جنيه مصري', 'KWD': 'دينار كويتي',
+      'QAR': 'ريال قطري', 'BHD': 'دينار بحريني', 'OMR': 'ريال عmani',
+    };
 
     showModalBottomSheet(
       context: context,
@@ -369,6 +377,13 @@ class _PaymentsTabState extends State<PaymentsTab> {
               controller: amountCtrl,
               decoration: const InputDecoration(labelText: 'المبلغ *', hintText: '0.00'),
               keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: selectedCurrency,
+              decoration: const InputDecoration(labelText: 'العملة'),
+              items: currencies.map((c) => DropdownMenuItem(value: c, child: Text('$c — ${currencyLabels[c] ?? c}', style: const TextStyle(fontSize: 13)))).toList(),
+              onChanged: (v) { if (v != null) setSheetState(() => selectedCurrency = v); },
             ),
             const SizedBox(height: 8),
             TextField(
@@ -402,6 +417,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                   setSheetState(() {
                     installments.add({
                       'amount': amount,
+                      'currency': selectedCurrency,
                       'due_date': selectedDate.toIso8601String().split('T')[0],
                       'installment_label': labelCtrl.text.isNotEmpty ? labelCtrl.text : 'القسط ${installments.length + 1}',
                     });
@@ -430,7 +446,7 @@ class _PaymentsTabState extends State<PaymentsTab> {
                         onPressed: () => setSheetState(() => installments.removeAt(i)),
                       ),
                       title: Text(inst['installment_label'] ?? '', style: const TextStyle(fontSize: 12)),
-                      subtitle: Text('${inst['amount']} SAR — ${inst['due_date']}', style: const TextStyle(fontSize: 11)),
+                      subtitle: Text('${inst['amount']} ${inst['currency'] ?? 'SAR'} — ${inst['due_date']}', style: const TextStyle(fontSize: 11)),
                     );
                   },
                 ),
@@ -465,7 +481,10 @@ class _PaymentsTabState extends State<PaymentsTab> {
       }
     } catch (e) {
       debugPrint('[payments_tab] _schedulePayments error: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل جدولة الدفعات')));
+      if (mounted) {
+        final msg = e.toString().contains('ValidationException') ? 'بيانات غير صحيحة: $e' : 'فشل جدولة الدفعات: $e';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      }
     }
   }
 
