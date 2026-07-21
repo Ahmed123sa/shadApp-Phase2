@@ -122,6 +122,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
     return _payments.where((p) => p['status'] == _filter).toList();
   }
 
+  List<dynamic> get _scheduledPayments {
+    return _payments.where((p) => p['requested_by_manager'] == true && (p['status'] == 'scheduled' || p['status'] == 'overdue')).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) return const LoadingState();
@@ -190,8 +194,23 @@ class _PaymentsPageState extends State<PaymentsPage> {
               _filterChip('مقبولة', 'approved'),
               const SizedBox(width: 8),
               _filterChip('معلّقة', 'pending'),
+              const SizedBox(width: 8),
+              _filterChip('مجدولة', 'scheduled'),
             ]),
             const SizedBox(height: 12),
+
+            if (_scheduledPayments.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(children: [
+                  Icon(Icons.calendar_today, size: 14, color: ShadColors.gold),
+                  const SizedBox(width: 6),
+                  Text('الدفعات القادمة', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: ShadColors.gold, fontFamily: 'NotoSansArabic')),
+                ]),
+              ),
+              ..._scheduledPayments.map((p) => _scheduledPaymentCard(p)),
+              const SizedBox(height: 12),
+            ],
 
             if (_filteredPayments.isEmpty)
               Padding(
@@ -483,8 +502,10 @@ class _PaymentsPageState extends State<PaymentsPage> {
   Widget _paymentCard(dynamic p, int index, [int? total]) {
     final isPending = p['status'] == 'pending';
     final isApproved = p['status'] == 'approved';
-    final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : ShadColors.textDisabled;
-    final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p['status'] ?? '';
+    final isScheduled = p['status'] == 'scheduled';
+    final isOverdue = p['status'] == 'overdue';
+    final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : isScheduled ? ShadColors.gold : isOverdue ? ShadColors.error : ShadColors.textDisabled;
+    final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : isScheduled ? 'مجدول' : isOverdue ? 'متأخر' : p['status'] ?? '';
 
     final methodLabels = {'bank_transfer': 'تحويل بنكي', 'swift': 'SWIFT', 'corporate_account': 'حساب شركة', 'instapay': 'Instapay', 'vodafone_cash': 'فودافون كاش', 'mobile_wallet': 'محفظة موبايل'};
 
@@ -516,6 +537,15 @@ class _PaymentsPageState extends State<PaymentsPage> {
                   const SizedBox(width: 6),
                   Text(statusText, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w500, fontFamily: 'NotoSansArabic')),
                 ]),
+                if (p['due_date'] != null) ...[
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Icon(Icons.calendar_today, size: 11, color: isOverdue ? ShadColors.error : ShadColors.textSecondary),
+                    const SizedBox(width: 4),
+                    Text('الاستحقاق: ${_formatDate(p['due_date'])}',
+                      style: TextStyle(fontSize: 11, color: isOverdue ? ShadColors.error : ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+                  ]),
+                ],
               ]),
             ),
           ]),
@@ -568,6 +598,51 @@ class _PaymentsPageState extends State<PaymentsPage> {
                 ));
               })(),
           ]),
+        ),
+      ]),
+    );
+  }
+
+  Widget _scheduledPaymentCard(dynamic p) {
+    final isOverdue = p['status'] == 'overdue';
+    final borderColor = isOverdue ? ShadColors.error : ShadColors.gold;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: ShadColors.card,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: borderColor, width: 1),
+      ),
+      child: Row(children: [
+        Icon(
+          isOverdue ? Icons.warning_amber : Icons.schedule,
+          size: 20,
+          color: isOverdue ? ShadColors.error : ShadColors.gold,
+        ),
+        const SizedBox(width: 10),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(p['installment_label'] ?? 'دفعة مجدولة',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: ShadColors.textPrimary, fontFamily: 'NotoSansArabic')),
+          const SizedBox(height: 2),
+          Row(children: [
+            Text('${p['amount'] ?? 0} ${p['currency'] ?? 'SAR'}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: ShadColors.gold, fontFamily: 'PlayfairDisplay')),
+            const SizedBox(width: 8),
+            if (p['due_date'] != null)
+              Text(_formatDate(p['due_date']),
+                style: TextStyle(fontSize: 11, color: isOverdue ? ShadColors.error : ShadColors.textSecondary, fontFamily: 'NotoSansArabic')),
+          ]),
+        ])),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: (isOverdue ? ShadColors.error : ShadColors.gold).withAlpha(25),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(isOverdue ? 'متأخر' : 'مجدول',
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isOverdue ? ShadColors.error : ShadColors.gold)),
         ),
       ]),
     );

@@ -54,6 +54,7 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
     Route::get('/workspaces/{workspace}/payments', [PaymentController::class, 'index']);
     Route::post('/workspaces/{workspace}/payments', [PaymentController::class, 'store']);
     Route::match(['put', 'post'], '/workspaces/{workspace}/payments/{payment}', [PaymentController::class, 'update']);
+    Route::get('/workspaces/{workspace}/payment-schedule', [PaymentController::class, 'getSchedule']);
     Route::get('/workspaces/{workspace}/approvals', [ApprovalController::class, 'index']);
     Route::get('/workspaces/{workspace}/meetings', [MeetingController::class, 'index']);
 
@@ -116,6 +117,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Payments
     Route::post('/payments/{payment}/review', [PaymentController::class, 'review']);
     Route::get('/payments/pending', [PaymentController::class, 'pending']);
+    Route::post('/workspaces/{workspace}/payments/schedule', [PaymentController::class, 'schedule']);
+    Route::put('/payments/{payment}/schedule', [PaymentController::class, 'updateSchedule']);
+    Route::delete('/payments/{payment}/schedule', [PaymentController::class, 'deleteSchedule']);
 
     // Approvals
     Route::get('/approvals/pending', [ApprovalController::class, 'pending']);

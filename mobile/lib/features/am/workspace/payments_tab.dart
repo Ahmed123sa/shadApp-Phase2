@@ -125,7 +125,13 @@ class _PaymentsTabState extends State<PaymentsTab> {
     if (_error != null) return ErrorState(message: _error!, onRetry: _load);
     if (_payments.isEmpty) return const EmptyState(icon: Icons.payment_outlined, title: 'لا توجد مدفوعات');
 
-    return RefreshIndicator(
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showScheduleSheet,
+        backgroundColor: ShadColors.gold,
+        child: const Icon(Icons.add, color: Colors.black),
+      ),
+      body: RefreshIndicator(
       onRefresh: _load,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
@@ -199,8 +205,11 @@ class _PaymentsTabState extends State<PaymentsTab> {
           final p = _payments[i - 1];
           final isPending = p['status'] == 'pending';
           final isApproved = p['status'] == 'approved';
-          final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : ShadColors.textDisabled;
-          final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p['status'] ?? '';
+          final isScheduled = p['status'] == 'scheduled';
+          final isOverdue = p['status'] == 'overdue';
+          final isManagerScheduled = p['requested_by_manager'] == true;
+          final statusColor = isApproved ? ShadColors.success : isPending ? ShadColors.gold : isOverdue ? ShadColors.error : isScheduled ? ShadColors.gold : ShadColors.textDisabled;
+          final statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : isOverdue ? 'متأخر' : isScheduled ? 'مجدول' : p['status'] ?? '';
 
           final methodLabels = {'bank_transfer': 'تحويل بنكي', 'swift': 'SWIFT', 'corporate_account': 'حساب شركة', 'instapay': 'Instapay', 'vodafone_cash': 'فودافون كاش', 'mobile_wallet': 'محفظة موبايل'};
 
@@ -232,6 +241,15 @@ class _PaymentsTabState extends State<PaymentsTab> {
                       const SizedBox(width: 6),
                       Text(statusText, style: TextStyle(fontSize: 11, color: statusColor, fontWeight: FontWeight.w500)),
                     ]),
+                    if (p['due_date'] != null) ...[
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        Icon(Icons.calendar_today, size: 11, color: isOverdue ? ShadColors.error : ShadColors.textSecondary),
+                        const SizedBox(width: 4),
+                        Text('الاستحقاق: ${_formatDate(p['due_date'])}',
+                          style: TextStyle(fontSize: 11, color: isOverdue ? ShadColors.error : ShadColors.textSecondary)),
+                      ]),
+                    ],
                   ]),
                 ),
 
@@ -293,12 +311,264 @@ class _PaymentsTabState extends State<PaymentsTab> {
                         ),
                       ),
                     ],
+                    // ── أزرار تعديل/مسح القسط المجدول ──
+                    if (isManagerScheduled && (isScheduled || isOverdue)) ...[
+                      const SizedBox(height: 12),
+                      Row(children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _showEditScheduleSheet(p),
+                            icon: const Icon(Icons.edit, size: 14),
+                            label: const Text('تعديل'),
+                            style: OutlinedButton.styleFrom(foregroundColor: ShadColors.gold),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => _deleteSchedule(p['id']),
+                            icon: const Icon(Icons.delete, size: 14),
+                            label: const Text('مسح'),
+                            style: OutlinedButton.styleFrom(foregroundColor: ShadColors.error),
+                          ),
+                        ),
+                      ]),
+                    ],
                   ]),
                 ),
               ],
             ),
           );
         },
+      ),
+    ),
+    );
+  }
+
+  void _showScheduleSheet() {
+    final installments = <Map<String, dynamic>>[];
+    final amountCtrl = TextEditingController();
+    final labelCtrl = TextEditingController();
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 30));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Text('جدولة دفعات', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+              const Spacer(),
+              IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(ctx)),
+            ]),
+            const SizedBox(height: 12),
+            TextField(
+              controller: amountCtrl,
+              decoration: const InputDecoration(labelText: 'المبلغ *', hintText: '0.00'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: labelCtrl,
+              decoration: const InputDecoration(labelText: 'الوصف (اختياري)', hintText: 'مثال: القسط الأول'),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text('تاريخ الاستحقاق: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                style: const TextStyle(fontSize: 12))),
+              TextButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) setSheetState(() => selectedDate = picked);
+                },
+                child: const Text('اختر تاريخ'),
+              ),
+            ]),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final amount = double.tryParse(amountCtrl.text);
+                  if (amount == null || amount <= 0) return;
+                  setSheetState(() {
+                    installments.add({
+                      'amount': amount,
+                      'due_date': selectedDate.toIso8601String().split('T')[0],
+                      'installment_label': labelCtrl.text.isNotEmpty ? labelCtrl.text : 'القسط ${installments.length + 1}',
+                    });
+                    amountCtrl.clear();
+                    labelCtrl.clear();
+                    selectedDate = DateTime.now().add(const Duration(days: 30));
+                  });
+                },
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('إضافة قسط'),
+              ),
+            ),
+            if (installments.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: ListView.builder(
+                  itemCount: installments.length,
+                  itemBuilder: (_, i) {
+                    final inst = installments[i];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: IconButton(
+                        icon: const Icon(Icons.delete, size: 18, color: ShadColors.error),
+                        onPressed: () => setSheetState(() => installments.removeAt(i)),
+                      ),
+                      title: Text(inst['installment_label'] ?? '', style: const TextStyle(fontSize: 12)),
+                      subtitle: Text('${inst['amount']} SAR — ${inst['due_date']}', style: const TextStyle(fontSize: 11)),
+                    );
+                  },
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: installments.isEmpty ? null : () async {
+                  Navigator.pop(ctx);
+                  await _schedulePayments(installments);
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: ShadColors.gold),
+                child: Text('جدولة (${installments.length} أقساط)', style: const TextStyle(color: Colors.black)),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _schedulePayments(List<Map<String, dynamic>> installments) async {
+    final wsId = widget.workspaceId ?? _api.workspaceId;
+    if (wsId == null) return;
+    try {
+      await _api.post('/workspaces/$wsId/payments/schedule', {'installments': installments});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تمت جدولة الدفعات')));
+        _load();
+      }
+    } catch (e) {
+      debugPrint('[payments_tab] _schedulePayments error: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل جدولة الدفعات')));
+    }
+  }
+
+  Future<void> _updateSchedule(int paymentId, Map<String, dynamic> data) async {
+    try {
+      await _api.put('/payments/$paymentId/schedule', data);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم تحديث القسط')));
+        _load();
+      }
+    } catch (e) {
+      debugPrint('[payments_tab] _updateSchedule error: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل تحديث القسط')));
+    }
+  }
+
+  Future<void> _deleteSchedule(int paymentId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('مسح القسط'),
+        content: const Text('هل أنت متأكد من مسح هذا القسط؟'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), style: ElevatedButton.styleFrom(backgroundColor: ShadColors.error), child: const Text('مسح')),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.delete('/payments/$paymentId/schedule');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('✅ تم مسح القسط')));
+        _load();
+      }
+    } catch (e) {
+      debugPrint('[payments_tab] _deleteSchedule error: $e');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل مسح القسط')));
+    }
+  }
+
+  void _showEditScheduleSheet(dynamic p) {
+    final amountCtrl = TextEditingController(text: p['amount']?.toString() ?? '');
+    final labelCtrl = TextEditingController(text: p['installment_label'] ?? '');
+    DateTime selectedDate = DateTime.tryParse(p['due_date'] ?? '') ?? DateTime.now().add(const Duration(days: 30));
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 16),
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('تعديل القسط', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: ShadColors.textPrimary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: amountCtrl,
+              decoration: const InputDecoration(labelText: 'المبلغ *'),
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: labelCtrl,
+              decoration: const InputDecoration(labelText: 'الوصف'),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(child: Text('الاستحقاق: ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}',
+                style: const TextStyle(fontSize: 12))),
+              TextButton(
+                onPressed: () async {
+                  final picked = await showDatePicker(
+                    context: ctx,
+                    initialDate: selectedDate,
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 365)),
+                  );
+                  if (picked != null) setSheetState(() => selectedDate = picked);
+                },
+                child: const Text('اختر تاريخ'),
+              ),
+            ]),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  final amount = double.tryParse(amountCtrl.text);
+                  if (amount == null || amount <= 0) return;
+                  Navigator.pop(ctx);
+                  await _updateSchedule(p['id'], {
+                    'amount': amount,
+                    'due_date': selectedDate.toIso8601String().split('T')[0],
+                    'installment_label': labelCtrl.text,
+                  });
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: ShadColors.gold),
+                child: const Text('حفظ التعديلات', style: TextStyle(color: Colors.black)),
+              ),
+            ),
+          ]),
+        ),
       ),
     );
   }

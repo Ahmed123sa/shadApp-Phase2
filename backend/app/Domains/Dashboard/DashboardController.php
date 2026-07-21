@@ -73,7 +73,7 @@ class DashboardController extends Controller
             ->count();
 
         $payments = Payment::where('workspace_id', $wsId)
-            ->where('status', 'pending')
+            ->whereIn('status', ['scheduled', 'pending', 'overdue'])
             ->count();
 
         $files = FileEntry::where('workspace_id', $wsId)
@@ -102,7 +102,7 @@ class DashboardController extends Controller
         $pendingApprovals = Approval::where('status', 'pending')
             ->count();
 
-        $payments = Payment::where('status', 'pending')
+        $payments = Payment::whereIn('status', ['scheduled', 'pending', 'overdue'])
             ->count();
 
         $files = FileEntry::where('status', 'pending')
@@ -138,7 +138,7 @@ class DashboardController extends Controller
             ->count();
 
         $payments = Payment::whereIn('workspace_id', $workspaceIds)
-            ->where('status', 'pending')
+            ->whereIn('status', ['scheduled', 'pending', 'overdue'])
             ->count();
 
         $files = FileEntry::whereIn('workspace_id', $workspaceIds)

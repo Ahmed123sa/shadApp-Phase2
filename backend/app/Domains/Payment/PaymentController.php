@@ -19,6 +19,8 @@ use Illuminate\Support\Facades\Storage;
 use App\Models\Contract;
 use App\Events\ContractCompanyApproved;
 use App\Models\SystemSetting;
+use App\Notifications\PaymentScheduledNotification;
+use Carbon\Carbon;
 
 class PaymentController extends Controller
 {
@@ -227,5 +229,145 @@ class PaymentController extends Controller
             'payment' => $payment->fresh(),
             'workspace' => $workspace,
         ]);
+    }
+
+    public function schedule(Request $request, Workspace $workspace): JsonResponse
+    {
+        $request->validate([
+            'installments' => 'required|array|min:1',
+            'installments.*.amount' => 'required|numeric|min:0',
+            'installments.*.due_date' => 'required|date|after_or_equal:today',
+            'installments.*.installment_label' => 'nullable|string|max:100',
+            'installments.*.notes' => 'nullable|string|max:500',
+        ]);
+
+        $payments = [];
+        foreach ($request->installments as $i => $inst) {
+            $payment = $workspace->payments()->create([
+                'client_id' => $workspace->client_id,
+                'amount' => $inst['amount'],
+                'currency' => 'SAR',
+                'due_date' => $inst['due_date'],
+                'installment_label' => $inst['installment_label'] ?? $this->arabicOrdinal($i + 1),
+                'requested_by_manager' => true,
+                'status' => 'scheduled',
+                'notes' => $inst['notes'] ?? null,
+            ]);
+            $payments[] = $payment;
+        }
+
+        foreach ($payments as $payment) {
+            try {
+                $workspace->client->notify(new PaymentScheduledNotification($payment));
+            } catch (\Exception $e) {
+                Log::warning('Payment scheduled notification failed: ' . $e->getMessage());
+            }
+        }
+
+        AuditLog::create([
+            'auditable_type' => Payment::class,
+            'auditable_id' => $payments[0]->id,
+            'client_id' => $workspace->client_id,
+            'action' => 'payment.scheduled',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['payments' => $payments], 201);
+    }
+
+    public function updateSchedule(Request $request, Payment $payment): JsonResponse
+    {
+        if ($payment->status !== 'scheduled') {
+            abort(422, 'لا يمكن تعديل دفعة مدفوعة أو معتمدة');
+        }
+
+        $request->validate([
+            'amount' => 'nullable|numeric|min:0',
+            'due_date' => 'nullable|date|after_or_equal:today',
+            'installment_label' => 'nullable|string|max:100',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $payment->update($request->only([
+            'amount', 'due_date', 'installment_label', 'notes',
+        ]));
+
+        AuditLog::create([
+            'auditable_type' => Payment::class,
+            'auditable_id' => $payment->id,
+            'client_id' => $payment->client_id,
+            'action' => 'payment.schedule_updated',
+            'ip_address' => $request->ip(),
+        ]);
+
+        return response()->json(['payment' => $payment->fresh()]);
+    }
+
+    public function deleteSchedule(Payment $payment): JsonResponse
+    {
+        if ($payment->status !== 'scheduled') {
+            abort(422, 'لا يمكن مسح دفعة مدفوعة أو معتمدة');
+        }
+
+        AuditLog::create([
+            'auditable_type' => Payment::class,
+            'auditable_id' => $payment->id,
+            'client_id' => $payment->client_id,
+            'action' => 'payment.schedule_deleted',
+            'ip_address' => request()->ip(),
+        ]);
+
+        $payment->delete();
+
+        return response()->json(['message' => 'تم مسح القسط']);
+    }
+
+    public function getSchedule(Workspace $workspace): JsonResponse
+    {
+        $payments = $workspace->payments()
+            ->where('requested_by_manager', true)
+            ->orderBy('due_date')
+            ->get();
+
+        return response()->json(['payments' => $payments]);
+    }
+
+    public function sendReminders(Request $request): JsonResponse
+    {
+        $now = Carbon::now();
+        $sent = 0;
+
+        $upcoming = Payment::where('status', 'scheduled')
+            ->whereDate('due_date', $now->copy()->addDays(3)->toDateString())
+            ->get();
+        foreach ($upcoming as $payment) {
+            $payment->client->notify(new \App\Notifications\PaymentReminderNotification($payment, '3_days'));
+            $sent++;
+        }
+
+        $dueToday = Payment::where('status', 'scheduled')
+            ->whereDate('due_date', $now->toDateString())
+            ->get();
+        foreach ($dueToday as $payment) {
+            $payment->client->notify(new \App\Notifications\PaymentReminderNotification($payment, 'today'));
+            $sent++;
+        }
+
+        $overdue = Payment::where('status', 'scheduled')
+            ->whereDate('due_date', '<', $now->toDateString())
+            ->get();
+        foreach ($overdue as $payment) {
+            $payment->update(['status' => 'overdue']);
+            $payment->client->notify(new \App\Notifications\PaymentReminderNotification($payment, 'overdue'));
+            $sent++;
+        }
+
+        return response()->json(['sent' => $sent]);
+    }
+
+    private function arabicOrdinal(int $n): string
+    {
+        $labels = ['الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن', 'التاسع', 'العاشر'];
+        return 'القسط ' . ($labels[$n - 1] ?? $n);
     }
 }

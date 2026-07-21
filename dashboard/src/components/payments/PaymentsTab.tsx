@@ -7,6 +7,8 @@ import type { Client } from '@/types';
 import { LoadingSkeleton } from '@/components/ui/LoadingSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 
+type ScheduleForm = { amount: string; due_date: string; installment_label: string };
+
 const FILE_BASE = process.env.NEXT_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:8000';
 function resolveFileUrl(url: string | string[]): string {
   if (!url) return '';
@@ -21,8 +23,12 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
   const [contracts, setContracts] = useState<any[]>([]);
   const [taxSummary, setTaxSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [scheduleForm, setScheduleForm] = useState<ScheduleForm>({ amount: '', due_date: '', installment_label: '' });
+  const [installments, setInstallments] = useState<ScheduleForm[]>([]);
   const user = getUser();
   const canReview = user?.role === 'super_admin';
+  const isSA = user?.role === 'super_admin';
 
   useEffect(() => {
     const load = () => {
@@ -52,6 +58,33 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
       setPayments((prev) => prev.map((p) => p.id === pid ? data.payment : p));
       if (data?.workspace && onWorkspaceUpdate) onWorkspaceUpdate(data.workspace);
     }
+  };
+
+  const addInstallment = () => {
+    if (!scheduleForm.amount || !scheduleForm.due_date) return;
+    setInstallments((prev) => [...prev, { ...scheduleForm, installment_label: scheduleForm.installment_label || `القسط ${prev.length + 1}` }]);
+    setScheduleForm({ amount: '', due_date: '', installment_label: '' });
+  };
+
+  const removeInstallment = (idx: number) => setInstallments((prev) => prev.filter((_, i) => i !== idx));
+
+  const submitSchedule = async () => {
+    if (installments.length === 0) return;
+    try {
+      await api.post(`/workspaces/${wsId}/payments/schedule`, { installments });
+      setShowSchedule(false);
+      setInstallments([]);
+      const { data: payRes } = await api.get(`/workspaces/${wsId}/payments`);
+      setPayments(payRes.payments?.data || payRes.payments || []);
+    } catch { }
+  };
+
+  const deleteSchedule = async (pid: number) => {
+    if (!confirm('هل أنت متأكد من مسح هذا القسط؟')) return;
+    try {
+      await api.delete(`/payments/${pid}/schedule`);
+      setPayments((prev) => prev.filter((p) => p.id !== pid));
+    } catch { }
   };
 
   if (loading) return <LoadingSkeleton />;
@@ -106,13 +139,21 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
       </div>
 
       <p className="text-xs text-[var(--color-text-disabled)]">نسبة العميل: {client?.client_type === 'individual' ? 'فردي' : 'شركة'}</p>
+      {isSA && (
+        <button onClick={() => setShowSchedule(true)} className="px-4 py-2 bg-[var(--color-gold)] text-black text-sm font-medium rounded-lg hover:opacity-90 transition-opacity">
+          جدولة دفعات
+        </button>
+      )}
       {payments.length === 0 ? <EmptyState message="لا توجد مدفوعات" /> : null}
       {payments.map((p, idx) => {
         const isPending = p.status === 'pending';
         const isApproved = p.status === 'approved';
-        const statusColor = isApproved ? 'text-green-400' : isPending ? 'text-yellow-400' : 'text-[var(--color-text-disabled)]';
-        const statusDot = isApproved ? 'bg-green-400' : isPending ? 'bg-yellow-400' : 'bg-gray-500';
-        const statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : p.status;
+        const isScheduled = p.status === 'scheduled';
+        const isOverdue = p.status === 'overdue';
+        const isManagerScheduled = p.requested_by_manager === true;
+        const statusColor = isApproved ? 'text-green-400' : isPending ? 'text-yellow-400' : isOverdue ? 'text-red-400' : isScheduled ? 'text-yellow-400' : 'text-[var(--color-text-disabled)]';
+        const statusDot = isApproved ? 'bg-green-400' : isPending ? 'bg-yellow-400' : isOverdue ? 'bg-red-400' : isScheduled ? 'bg-yellow-400' : 'bg-gray-500';
+        const statusText = isApproved ? 'تمت الموافقة' : isPending ? 'قيد الانتظار' : isOverdue ? 'متأخر' : isScheduled ? 'مجدول' : p.status;
 
         return (
           <div key={p.id} className={`border rounded-xl overflow-hidden ${isPending ? 'border-[var(--color-gold)]' : 'border-[var(--color-card-border)]'}`}>
@@ -124,6 +165,13 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
                 <span className={`w-1.5 h-1.5 rounded-full ${statusDot}`}></span>
                 <span className={`text-xs font-medium ${statusColor}`}>{statusText}</span>
               </div>
+              {p.due_date && (
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className={`text-xs ${isOverdue ? 'text-red-400' : 'text-[var(--color-text-secondary)]'}`}>
+                    📅 الاستحقاق: {p.due_date}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* ── الفاصل ── */}
@@ -154,10 +202,56 @@ export default function PaymentsTab({ wsId, client, onWorkspaceUpdate }: { wsId:
                   <button onClick={() => reviewPayment(p.id, 'approved')} className="w-full text-sm bg-emerald-600 text-white py-2 rounded-lg hover:bg-emerald-700 font-medium">اعتماد</button>
                 </div>
               )}
+              {isManagerScheduled && (isScheduled || isOverdue) && isSA && (
+                <div className="pt-2 flex gap-2">
+                  <button onClick={() => deleteSchedule(p.id)} className="flex-1 text-sm bg-red-600/20 text-red-400 py-2 rounded-lg hover:bg-red-600/30 font-medium">مسح</button>
+                </div>
+              )}
             </div>
           </div>
         );
       })}
+      {showSchedule && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowSchedule(false)}>
+          <div className="bg-[#1a1a1a] border border-[var(--color-card-border)] rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-[var(--color-text-primary)]">جدولة دفعات</h3>
+              <button onClick={() => setShowSchedule(false)} className="text-[var(--color-text-secondary)] hover:text-white">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">المبلغ *</label>
+                <input type="number" value={scheduleForm.amount} onChange={(e) => setScheduleForm({ ...scheduleForm, amount: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]" placeholder="0.00" />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">الوصف (اختياري)</label>
+                <input type="text" value={scheduleForm.installment_label} onChange={(e) => setScheduleForm({ ...scheduleForm, installment_label: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]" placeholder="مثال: القسط الأول" />
+              </div>
+              <div>
+                <label className="text-xs text-[var(--color-text-secondary)] mb-1 block">تاريخ الاستحقاق *</label>
+                <input type="date" value={scheduleForm.due_date} onChange={(e) => setScheduleForm({ ...scheduleForm, due_date: e.target.value })} className="w-full bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2 text-sm text-[var(--color-text-primary)]" />
+              </div>
+              <button onClick={addInstallment} className="w-full text-sm border border-[var(--color-gold)] text-[var(--color-gold)] py-2 rounded-lg hover:bg-[var(--color-gold)]/10">+ إضافة قسط</button>
+              {installments.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {installments.map((inst, i) => (
+                    <div key={i} className="flex items-center justify-between bg-[var(--color-card)] border border-[var(--color-card-border)] rounded-lg px-3 py-2">
+                      <div>
+                        <p className="text-xs text-[var(--color-text-primary)]">{inst.installment_label}</p>
+                        <p className="text-[10px] text-[var(--color-text-secondary)]">{inst.amount} SAR — {inst.due_date}</p>
+                      </div>
+                      <button onClick={() => removeInstallment(i)} className="text-red-400 hover:text-red-300 text-xs">مسح</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button onClick={submitSchedule} disabled={installments.length === 0} className="w-full text-sm bg-[var(--color-gold)] text-black py-2.5 rounded-lg font-medium hover:opacity-90 disabled:opacity-40">
+                جدولة ({installments.length} أقساط)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('contracts:send-reminders')->dailyAt('09:00');
 Schedule::command('meetings:send-reminders')->everyThirtyMinutes();
+Schedule::command('payments:send-reminders')->dailyAt('09:00');
