@@ -272,23 +272,6 @@ class _ContractsPageState extends State<ContractsPage> {
               ),
             ]),
           ],
-          if (c['pdf_url'] != null) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _downloadPdf(c['pdf_url'] as String),
-                icon: const Icon(Icons.picture_as_pdf, size: 16),
-                label: const Text('تحميل العقد (PDF)'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ShadColors.gold,
-                  side: const BorderSide(color: ShadColors.gold),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-              ),
-            ),
-          ],
           if (isApproved) ...[
             const SizedBox(height: 10),
             Container(

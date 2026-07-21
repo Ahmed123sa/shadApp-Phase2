@@ -95,23 +95,42 @@ class _ContractBuilderState extends State<ContractBuilder> {
   }
 
   Future<void> _loadTemplates() async {
-    if (_isEditing) {
-      if (mounted) setState(() => _templatesLoading = false);
-      return;
-    }
     try {
       final data = await _api.get('/contract-clause-templates');
       final templates = data['templates'] as List<dynamic>? ?? [];
-      for (final t in templates) {
-        if (t['type'] == 'fixed') {
-          _fixedClauses.add({'content': t['content'], 'type': 'fixed'});
-        } else if (t['type'] == 'optional') {
-          _optionalClauses.add({'content': t['content'], 'selected': false});
+
+      if (_isEditing) {
+        final existingContents = <String>{
+          ..._fixedClauses.map((c) => (c['content'] as String?)?.trim() ?? ''),
+          ..._optionalClauses.map((c) => (c['content'] as String?)?.trim() ?? ''),
+          ..._customClauses,
+        };
+        for (final t in templates) {
+          final content = (t['content'] as String?)?.trim() ?? '';
+          if (content.isEmpty || existingContents.contains(content)) continue;
+          existingContents.add(content);
+          if (t['type'] == 'fixed') {
+            _fixedClauses.add({'content': content, 'type': 'fixed'});
+          } else if (t['type'] == 'optional') {
+            _optionalClauses.add({'content': content, 'selected': false});
+          }
+        }
+      } else {
+        final seen = <String>{};
+        for (final t in templates) {
+          final content = (t['content'] as String?)?.trim() ?? '';
+          if (content.isEmpty || seen.contains(content)) continue;
+          seen.add(content);
+          if (t['type'] == 'fixed') {
+            _fixedClauses.add({'content': content, 'type': 'fixed'});
+          } else if (t['type'] == 'optional') {
+            _optionalClauses.add({'content': content, 'selected': false});
+          }
         }
       }
     } catch (_) {
-      _fixedClauses = _hardcodedFixed.map((f) => Map<String, dynamic>.from(f)).toList();
-      _optionalClauses = _hardcodedOptional.map((o) => Map<String, dynamic>.from(o)).toList();
+      if (_fixedClauses.isEmpty) _fixedClauses = _hardcodedFixed.map((f) => Map<String, dynamic>.from(f)).toList();
+      if (_optionalClauses.isEmpty) _optionalClauses = _hardcodedOptional.map((o) => Map<String, dynamic>.from(o)).toList();
     }
     if (mounted) setState(() => _templatesLoading = false);
   }

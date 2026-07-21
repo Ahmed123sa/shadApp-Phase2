@@ -34,6 +34,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
   int _unreadNotifs = 0;
   int _selectedIndex = 0;
   int _badgeApprovals = 0;
+  int _badgeChat = 0;
   Timer? _pollTimer;
 
   @override
@@ -131,6 +132,7 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
     try {
       final data = await _api.get('/badge-counts');
       _badgeApprovals = int.tryParse(data['approvals']?.toString() ?? '') ?? 0;
+      _badgeChat = int.tryParse(data['chat']?.toString() ?? '') ?? 0;
     } catch (_) {}
     if (mounted) setState(() {});
   }
@@ -357,7 +359,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: _isSA
                   ? [
-                      const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                      NavigationDestination(
+                        icon: _badgeChat > 0 ? Badge.count(count: _badgeChat, backgroundColor: ShadColors.crimson, textColor: Colors.white, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.home_outlined)) : const Icon(Icons.home_outlined),
+                        selectedIcon: _badgeChat > 0 ? Badge.count(count: _badgeChat, backgroundColor: ShadColors.crimson, textColor: Colors.white, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.home, color: ShadColors.gold)) : const Icon(Icons.home, color: ShadColors.gold),
+                        label: 'الرئيسية',
+                      ),
                       NavigationDestination(
                         icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
                         selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),
@@ -368,7 +374,11 @@ class _AmDashboardPageState extends State<AmDashboardPage> {
                       const NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings, color: ShadColors.gold), label: 'الإعدادات'),
                     ]
                   : [
-                      const NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home, color: ShadColors.gold), label: 'الرئيسية'),
+                      NavigationDestination(
+                        icon: _badgeChat > 0 ? Badge.count(count: _badgeChat, backgroundColor: ShadColors.crimson, textColor: Colors.white, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.home_outlined)) : const Icon(Icons.home_outlined),
+                        selectedIcon: _badgeChat > 0 ? Badge.count(count: _badgeChat, backgroundColor: ShadColors.crimson, textColor: Colors.white, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.home, color: ShadColors.gold)) : const Icon(Icons.home, color: ShadColors.gold),
+                        label: 'الرئيسية',
+                      ),
                       NavigationDestination(
                         icon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle_outline)) : const Icon(Icons.check_circle_outline),
                         selectedIcon: _badgeApprovals > 0 ? Badge.count(count: _badgeApprovals, backgroundColor: ShadColors.gold, textColor: Colors.black, textStyle: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold), child: const Icon(Icons.check_circle, color: ShadColors.gold)) : const Icon(Icons.check_circle, color: ShadColors.gold),

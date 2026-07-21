@@ -83,7 +83,7 @@ class DashboardController extends Controller
         return response()->json([
             'chat' => $chat,
             'contracts' => $contracts,
-            'approvals' => $approvals + $contracts,
+            'approvals' => $approvals,
             'payments' => $payments,
             'files' => $files,
             'notifications' => 0,
@@ -92,27 +92,20 @@ class DashboardController extends Controller
 
     private function saCounts($user): JsonResponse
     {
-        $workspaceIds = Workspace::pluck('id');
-
-        $chat = ChatMessage::whereIn('workspace_id', $workspaceIds)
-            ->where('sender_type', '!=', get_class($user))
+        $chat = ChatMessage::where('sender_type', '!=', get_class($user))
             ->whereNull('read_at')
             ->count();
 
-        $pendingContracts = Contract::whereIn('workspace_id', $workspaceIds)
-            ->whereIn('status', ['sent', 'client_approved'])
+        $pendingContracts = Contract::whereIn('status', ['sent', 'client_approved'])
             ->count();
 
-        $pendingApprovals = Approval::whereIn('workspace_id', $workspaceIds)
-            ->where('status', 'pending')
+        $pendingApprovals = Approval::where('status', 'pending')
             ->count();
 
-        $payments = Payment::whereIn('workspace_id', $workspaceIds)
-            ->where('status', 'pending')
+        $payments = Payment::where('status', 'pending')
             ->count();
 
-        $files = FileEntry::whereIn('workspace_id', $workspaceIds)
-            ->where('status', 'pending')
+        $files = FileEntry::where('status', 'pending')
             ->count();
 
         $notifications = $user->notifications()->whereNull('read_at')->count();

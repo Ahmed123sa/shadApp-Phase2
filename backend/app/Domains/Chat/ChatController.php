@@ -184,6 +184,10 @@ class ChatController extends Controller
                     'generated_at' => now(),
                 ]);
             }
+
+            if ($approval->requester) {
+                $approval->requester->notify(new \App\Notifications\ApprovalRespondedNotification($approval));
+            }
         }
 
         AuditLog::create([

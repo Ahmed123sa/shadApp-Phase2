@@ -19,7 +19,7 @@ import '../signature/signature_tab.dart';
 
 class ClientDashboardScreen extends StatefulWidget {
   final int initialTab;
-  const ClientDashboardScreen({super.key, this.initialTab = 0});
+  const ClientDashboardScreen({super.key, this.initialTab = 2});
 
   @override
   State<ClientDashboardScreen> createState() => _ClientDashboardScreenState();

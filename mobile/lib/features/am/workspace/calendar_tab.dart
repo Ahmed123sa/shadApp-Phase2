@@ -186,8 +186,6 @@ class _CalendarTabState extends State<CalendarTab> {
             const SizedBox(width: 8),
             _filterChip('اجتماعات', 'meeting'),
             const SizedBox(width: 8),
-            _filterChip('مواعيد', 'contract'),
-            const SizedBox(width: 8),
             _filterChip('مدفوعات', 'payment'),
             const SizedBox(width: 8),
             _filterChip('موافقات', 'approval'),
@@ -232,9 +230,7 @@ class _CalendarTabState extends State<CalendarTab> {
                           child: Icon(_eventIcon(e), size: 18, color: _eventColor(e)),
                         ),
                         title: Text(e['title'] ?? '', style: ShadTypography.cardTitle),
-                        subtitle: e['notes'] != null
-                          ? Text(e['notes'], style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary), maxLines: 1)
-                          : Text(e['ref'] ?? '', style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
+                        subtitle: Text(_formatDate(e['date']), style: ShadTypography.caption.copyWith(color: ShadColors.textSecondary)),
                       ),
                     )),
                     const SizedBox(height: 12),

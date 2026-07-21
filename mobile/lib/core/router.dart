@@ -23,7 +23,7 @@ GoRouter createRouter(ApiClient api, {String initialLocation = '/login'}) {
       GoRoute(path: '/preview', builder: (_, __) => const PreviewPage()),
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(path: '/dashboard', builder: (_, state) {
-        final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 0;
+        final tab = int.tryParse(state.uri.queryParameters['tab'] ?? '') ?? 2;
         return DashboardPage(initialTab: tab);
       }),
       GoRoute(path: '/signature', builder: (_, __) => const SignaturePage()),

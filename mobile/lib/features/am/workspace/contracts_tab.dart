@@ -424,29 +424,6 @@ class _ContractsTabState extends State<ContractsTab> {
                           padding: EdgeInsets.only(top: 2),
                           child: Text('قيمة العقد غير شاملة الضريبة المضافة', style: TextStyle(fontSize: 10, color: ShadColors.textSecondary, fontFamily: 'Archivo')),
                         ),
-                      if (['client_approved', 'company_approved', 'completed'].contains(c['status']) && c['pdf_url'] != null) ...[
-                        const SizedBox(height: 8),
-                        InkWell(
-                          onTap: () async {
-                            final url = _api.resolveFileUrl(c['pdf_url'] as String);
-                            final uri = Uri.tryParse(url);
-                            if (uri != null && await canLaunchUrl(uri)) {
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            } else {
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('فشل فتح الملف')));
-                            }
-                          },
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
-                            const Icon(Icons.picture_as_pdf, size: 14, color: ShadColors.error),
-                            const SizedBox(width: 4),
-                            Text(
-                              c['status'] == 'client_approved' ? 'عرض العقد الموقع' : 'تحميل العقد النهائي',
-                              style: TextStyle(fontSize: 11, color: ShadColors.primary, decoration: TextDecoration.underline),
-                            ),
-                          ]),
-                        ),
-                      ],
                       if (actions.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Container(
