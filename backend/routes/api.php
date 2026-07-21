@@ -53,7 +53,7 @@ Route::middleware('auth.any:sanctum,client')->group(function () {
     Route::get('/workspaces/{workspace}/contracts', [ContractController::class, 'index']);
     Route::get('/workspaces/{workspace}/payments', [PaymentController::class, 'index']);
     Route::post('/workspaces/{workspace}/payments', [PaymentController::class, 'store']);
-    Route::match(['put', 'post'], '/workspaces/{workspace}/payments/{payment}', [PaymentController::class, 'update']);
+    Route::put('/workspaces/{workspace}/payments/{payment}', [PaymentController::class, 'update']);
     Route::get('/workspaces/{workspace}/payment-schedule', [PaymentController::class, 'getSchedule']);
     Route::get('/workspaces/{workspace}/approvals', [ApprovalController::class, 'index']);
     Route::get('/workspaces/{workspace}/meetings', [MeetingController::class, 'index']);
