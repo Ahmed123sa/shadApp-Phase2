@@ -248,6 +248,7 @@ class PaymentController extends Controller
                 'client_id' => $workspace->client_id,
                 'amount' => $inst['amount'],
                 'currency' => $inst['currency'] ?? 'SAR',
+                'method_type' => 'scheduled',
                 'due_date' => $inst['due_date'],
                 'installment_label' => $inst['installment_label'] ?? $this->arabicOrdinal($i + 1),
                 'requested_by_manager' => true,
